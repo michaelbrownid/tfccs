@@ -7,8 +7,8 @@ import os
 import sys
 import numpy as np
 import tensorflow as tf
-from model import Model
-import data as data
+from .model import Model
+from . import data
 
 ################################
 def test(args):

@@ -8,9 +8,9 @@ import os
 import sys
 import tensorflow as tf
 import tensorflow.keras
-from model import Model
-import data as data
 import numpy as np
+from .model import Model
+from . import data
 
 ################################
 def train(args):
