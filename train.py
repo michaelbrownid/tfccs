@@ -57,8 +57,9 @@ def train(args):
                 for b in range(data_loader.num_batches):
                     start = time.time()
                     x, y = data_loader.next_batch()
-                    yid = y[:,:,0:4]
-                    ylen = y[:,:,4:]
+                    #### Try to predict only the first full HP at [1]
+                    yid = y[:,1,0:4]
+                    ylen = y[:,1,4:]
 
                     #myfit=model.model.fit( x, [yid,ylen], epochs=1, batch_size=1,verbose=2)
                     myfit = model.model.train_on_batch( x, [yid,ylen])
@@ -96,8 +97,9 @@ def train(args):
                         data_loader_test.reset_batch_pointer()
                         for b in range(data_loader_test.num_batches):
                             x, y = data_loader_test.next_batch()
-                            yid = y[:,:,0:4]
-                            ylen = y[:,:,4:]
+                            #### Try to predict only the first full HP at [1]
+                            yid = y[:,1,0:4]
+                            ylen = y[:,1,4:]
                             #mytest=model.model.evaluate( x, [yid,ylen],verbose=0)
                             mytest=model.model.test_on_batch( x, [yid,ylen])
                             for (kk,vv) in zip(model.model.metrics_names,mytest):
