@@ -3,8 +3,22 @@ import random
 import sys
 import zipfile
 import os
+import multiprocessing as mp
 
-class data():
+################################
+def loadonefile( filename, myzfname=None ):
+    print("loadonefile",  filename, "from", myzfname)
+    if myzfname is not None: 
+        zf = zipfile.ZipFile(myzfname, mode='r') # can't pass zf without corruption so open here!
+        zf.extract(filename) # ,path=workdir)
+        zf.close()
+    tmp = np.load(filename)
+    print("loadonefile",  filename, "tmp['windowinput'].shape", tmp['windowinput'].shape)
+    if myzfname is not None: os.remove(filename)
+    return(tmp)
+
+################################
+class data:
     ################################
     def __init__(self, batch_size, datafile, shortcut=False):
 
@@ -23,28 +37,46 @@ class data():
         # shortcut only loads first of first
 
         ####
-        def loadfilenames( filenames, zf=None ):
+        def loadfilenames( filenames, zfname=None ):
             # first
             for ii in [0]:
                 df = filenames[ii]
-                if zf is not None: zf.extract(df) # ,path=workdir)
-                print("loadfilenames", ii, df)
-                tmp = np.load(df)
+                tmp = loadonefile(df, myzfname=zfname)
                 inputdat = tmp['windowinput']
                 outputdat = tmp['windowoutput']
-                if zf is not None: os.remove(df)
             # rest
+
             if not shortcut:
-                for ii in range(1,len(filenames)):
-                    df = filenames[ii]
-                    if zf is not None: zf.extract(df) # ,path=workdir)
-                    print("loadfilenames", ii, df)
-                    tmp = np.load(df)
-                    tmprs = tmp['windowinput']
-                    inputdat = np.concatenate( (inputdat, tmprs), axis=0)
-                    tmprs = tmp['windowoutput']
-                    outputdat = np.concatenate( (outputdat, tmprs), axis=0)
-                    if zf is not None: os.remove(df)
+                #### try loading in parallel
+                if False:
+                    # mp.Pool can't pickle and mp appears to use pickle to transfer objects=bad for BIG
+                    #pool = mp.Pool(processes=2)
+                    pool = mp.pool.ThreadPool(processes=32)
+                    # fixes transfer problem: multiprocessing.pool.MaybeEncodingError: Error sending result:
+                    # 'TypeError(“cannot serialize '_io.BufferedReader' object”,)'
+                    manyresults = [pool.apply_async(loadonefile, (ff,), {'myzfname':zfname}) for ff in filenames]
+                    for res in manyresults:
+                        tmp = res.get()
+                        tmprs = tmp['windowinput']
+                        inputdat = np.concatenate( (inputdat, tmprs), axis=0)
+                        tmprs = tmp['windowoutput']
+                        outputdat = np.concatenate( (outputdat, tmprs), axis=0)
+                if False:
+                    # mp.Pool can't pickle and mp appears to use pickle to transfer objects=bad for BIG
+                    pool = mp.Pool(processes=8)
+                    for tmp in pool.imap_unordered( mapcall, filenames ):
+                        tmprs = tmp['windowinput']
+                        inputdat = np.concatenate( (inputdat, tmprs), axis=0)
+                        tmprs = tmp['windowoutput']
+                        outputdat = np.concatenate( (outputdat, tmprs), axis=0)
+                if True:
+                    for ii in range(1,len(filenames)):
+                        df = filenames[ii]
+                        tmp = loadonefile(df, zf)
+                        tmprs = tmp['windowinput']
+                        inputdat = np.concatenate( (inputdat, tmprs), axis=0)
+                        tmprs = tmp['windowoutput']
+                        outputdat = np.concatenate( (outputdat, tmprs), axis=0)
 
             print("loadfilenames final inputdat.shape", inputdat.shape)
             print("loadfilenames final outputdat.shape", outputdat.shape)
@@ -66,7 +98,8 @@ class data():
                 print("loaddata zipfile",ff)
                 zf = zipfile.ZipFile(ff, mode='r')
                 filenames = zf.namelist()
-                mydat = loadfilenames(filenames, zf)
+                zf.close()
+                mydat = loadfilenames(filenames, ff)
                 if first:
                     inputdat = mydat["inputdat"]
                     outputdat = mydat["outputdat"]

@@ -43,8 +43,9 @@ def test(args):
 
                 start = time.time()
                 x, y = data_loader.next_batch()
-                yid = y[:,:,0:4]
-                ylen = y[:,:,4:]
+                #### Try to predict only the first full HP at [1]
+                yid = y[:,1,0:4]
+                ylen = y[:,1,4:]
 
                 predictions = model.model.predict(x)
 
@@ -54,63 +55,122 @@ def test(args):
                 #np.save("test.0.predictions",predictions[0])
                 #np.save("test.1.predictions",predictions[1])
 
-                fp = open("test.0.preds.txt","w")
-                for ii in range(predictions[0].shape[0]):
-                    for jj in range(predictions[0].shape[1]):
+                #### SINGLE HP
+                if True:
+                    fp = open("test.0.preds.txt","w")
+                    for ii in range(predictions[0].shape[0]):
                         print("0\t%d\t%d\t%s\t-1\t%s" % (ii,
-                                                        jj,
-                                                        "\t".join([str(xx) for xx in predictions[0][ii,jj]]),
-                                                        "\t".join([str(xx) for xx in yid[ii,jj]])
-                                                    ), file=fp)
-                fp.close()
+                                                         0,
+                                                         "\t".join([str(xx) for xx in predictions[0][ii,:]]),
+                                                         "\t".join([str(xx) for xx in yid[ii,:]])
+                                                     ), file=fp)
+                    fp.close()
 
-                fp = open("test.1.preds.txt","w")
-                for ii in range(predictions[1].shape[0]):
-                    for jj in range(predictions[1].shape[1]):
+                    fp = open("test.1.preds.txt","w")
+                    for ii in range(predictions[1].shape[0]):
                         print("0\t%d\t%d\t%s\t-1\t%s" % (ii,
-                                                        jj,
-                                                        "\t".join([str(xx) for xx in predictions[1][ii,jj]]),
-                                                        "\t".join([str(xx) for xx in ylen[ii,jj]])
-                                                    ), file=fp)
-                fp.close()
+                                                         0,
+                                                         "\t".join([str(xx) for xx in predictions[1][ii,:]]),
+                                                         "\t".join([str(xx) for xx in ylen[ii,:]])
+                                                     ), file=fp)
+                    fp.close()
+
+                #### All 128 HPs
+                if False:
+                    fp = open("test.0.preds.txt","w")
+                    for ii in range(predictions[0].shape[0]):
+                        for jj in range(predictions[0].shape[1]):
+                            print("0\t%d\t%d\t%s\t-1\t%s" % (ii,
+                                                            jj,
+                                                            "\t".join([str(xx) for xx in predictions[0][ii,jj]]),
+                                                            "\t".join([str(xx) for xx in yid[ii,jj]])
+                                                        ), file=fp)
+                    fp.close()
+
+                    fp = open("test.1.preds.txt","w")
+                    for ii in range(predictions[1].shape[0]):
+                        for jj in range(predictions[1].shape[1]):
+                            print("0\t%d\t%d\t%s\t-1\t%s" % (ii,
+                                                            jj,
+                                                            "\t".join([str(xx) for xx in predictions[1][ii,jj]]),
+                                                            "\t".join([str(xx) for xx in ylen[ii,jj]])
+                                                        ), file=fp)
+                    fp.close()
 
                 end = time.time()
 
                 ################################
                 # take max for error rate
-                numerr = 0
-                total = 0
-                for ii in range(predictions[1].shape[0]):
-                    for jj in range(predictions[1].shape[1]):
-                        truth = ylen[ii,jj]
-                        estimate = predictions[1][ii,jj]
-                        truemax = np.argmax(truth)
-                        estmax = np.argmax(estimate)
-                        # # estsort = np.sort(-estimate,1)
-                        if truemax>3:
-                            print("long1 %d %d true est prob" % (ii, jj), truemax,estmax,estimate[estmax])
-                        if truemax!=estmax:
-                            numerr+=1
-                            print("err1 %d %d true est prob" % (ii, jj), truemax,estmax,estimate[estmax])
-                        total+=1
-                print("error rate 1 %f = %d / %d" % (float(numerr)/total,numerr,total))
 
-                numerr = 0
-                total = 0
-                for ii in range(predictions[0].shape[0]):
-                    for jj in range(predictions[0].shape[1]):
-                        truth = yid[ii,jj]
-                        # skip null
-                        if truth[0]==0.25 and truth[1]==0.25 and truth[2]==0.25 and truth[3]==0.25: continue
-                        estimate = predictions[0][ii,jj]
-                        truemax = np.argmax(truth)
-                        estmax = np.argmax(estimate)
-                        # # estsort = np.sort(-estimate,1)
-                        if truemax!=estmax:
-                            numerr+=1
-                            print("err0 %d %d true est prob" % (ii, jj), truemax,estmax,estimate[estmax])
-                        total+=1
-                print("error rate 0 %f = %d / %d" % (float(numerr)/total,numerr,total))
+                ####
+                if True:
+                    numerr = 0
+                    total = 0
+                    for ii in range(predictions[1].shape[0]):
+                            truth = ylen[ii,:]
+                            estimate = predictions[1][ii,:]
+                            truemax = np.argmax(truth)
+                            estmax = np.argmax(estimate)
+                            # # estsort = np.sort(-estimate,1)
+                            if truemax>3:
+                                print("long1 %d %d true est prob" % (ii, 0), truemax,estmax,estimate[estmax])
+                            if truemax!=estmax:
+                                numerr+=1
+                                print("err1 %d %d true est prob" % (ii, 0), truemax,estmax,estimate[estmax])
+                            total+=1
+                    print("error rate 1 %f = %d / %d" % (float(numerr)/total,numerr,total))
+
+                    numerr = 0
+                    total = 0
+                    for ii in range(predictions[0].shape[0]):
+                            truth = yid[ii,:]
+                            # skip null
+                            # if truth[0]==0.25 and truth[1]==0.25 and truth[2]==0.25 and truth[3]==0.25: continue
+                            estimate = predictions[0][ii,:]
+                            truemax = np.argmax(truth)
+                            estmax = np.argmax(estimate)
+                            # # estsort = np.sort(-estimate,1)
+                            if truemax!=estmax:
+                                numerr+=1
+                                print("err0 %d %d true est prob" % (ii, 0), truemax,estmax,estimate[estmax])
+                            total+=1
+                    print("error rate 0 %f = %d / %d" % (float(numerr)/total,numerr,total))
+
+                ####
+                if False:
+                    numerr = 0
+                    total = 0
+                    for ii in range(predictions[1].shape[0]):
+                        for jj in range(predictions[1].shape[1]):
+                            truth = ylen[ii,jj]
+                            estimate = predictions[1][ii,jj]
+                            truemax = np.argmax(truth)
+                            estmax = np.argmax(estimate)
+                            # # estsort = np.sort(-estimate,1)
+                            if truemax>3:
+                                print("long1 %d %d true est prob" % (ii, jj), truemax,estmax,estimate[estmax])
+                            if truemax!=estmax:
+                                numerr+=1
+                                print("err1 %d %d true est prob" % (ii, jj), truemax,estmax,estimate[estmax])
+                            total+=1
+                    print("error rate 1 %f = %d / %d" % (float(numerr)/total,numerr,total))
+
+                    numerr = 0
+                    total = 0
+                    for ii in range(predictions[0].shape[0]):
+                        for jj in range(predictions[0].shape[1]):
+                            truth = yid[ii,jj]
+                            # skip null
+                            # if truth[0]==0.25 and truth[1]==0.25 and truth[2]==0.25 and truth[3]==0.25: continue
+                            estimate = predictions[0][ii,jj]
+                            truemax = np.argmax(truth)
+                            estmax = np.argmax(estimate)
+                            # # estsort = np.sort(-estimate,1)
+                            if truemax!=estmax:
+                                numerr+=1
+                                print("err0 %d %d true est prob" % (ii, jj), truemax,estmax,estimate[estmax])
+                            total+=1
+                    print("error rate 0 %f = %d / %d" % (float(numerr)/total,numerr,total))
 
 if __name__ == '__main__':
     exec(open(sys.argv[1]).read())

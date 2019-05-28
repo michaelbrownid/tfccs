@@ -15,12 +15,18 @@ from . import data
 ################################
 def train(args):
 
+    t0=datetime.datetime.now()
     data_loader = data.data( args.batch_size, sys.argv[2])
+    t1=datetime.datetime.now()
+    print("time data_loader",str(t1-t0))
 
     # get test if there
     data_loader_test = None
     if len(sys.argv)>3:
+        t0=datetime.datetime.now()
         data_loader_test = data.data( args.batch_size, sys.argv[3])
+        t1=datetime.datetime.now()
+        print("time data_loader test",str(t1-t0))
 
     # check compatibility if training is continued from previously saved model
     if args.init_from is not None:
