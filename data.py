@@ -4,18 +4,53 @@ import sys
 import zipfile
 import os
 import multiprocessing as mp
+import time
+
+################################
+def timeit( func, *args, **kwargs ):
+    ts = time.time()
+    tmp = func(*args, **kwargs)
+    te = time.time()
+    print("timeit", (te-ts))
+    return(tmp)
+
+#def mult(x,y):
+#    return(x*y)
+#timeit(mult, 5,3)
 
 ################################
 def loadonefile( filename, myzfname=None ):
     print("loadonefile",  filename, "from", myzfname)
+    prefix = ""
     if myzfname is not None: 
-        zf = zipfile.ZipFile(myzfname, mode='r') # can't pass zf without corruption so open here!
-        zf.extract(filename) # ,path=workdir)
+        zf = zipfile.ZipFile(myzfname, mode='r') # parallel: can't pass zf without corruption so open here!
+        print("loadonefile extract")
+        prefix=""
+        timeit( zf.extract, filename) #, path=prefix )
         zf.close()
-    tmp = np.load(filename)
-    print("loadonefile",  filename, "tmp['windowinput'].shape", tmp['windowinput'].shape)
-    if myzfname is not None: os.remove(filename)
+    print("loadonefile np.load")
+    tmp = timeit( np.load, prefix+filename )
+    #print("loadonefile",  filename, "tmp['windowinput'].shape", tmp['windowinput'].shape)
+    if myzfname is not None: os.remove(prefix+filename)
     return(tmp)
+
+################################
+def myconcatenate( arrays, **kwargs ):
+    """"concatenate / append two numpy arrays
+        This is slow and takes linear time: 
+        inputdat = timeit(np.concatenate, (inputdat, tmprs), axis=0)
+    """
+    ar1shape = arrays[0].shape
+    ar2shape = arrays[1].shape
+    if not len(ar1shape)==len(ar2shape):
+        print("ERROR can't concat arrays of different dimensions")
+        sys.exit(1)
+    arnewshape = list(ar1shape)
+    arnewshape[0] = ar1shape[0]+ar2shape[0]
+    arnew = np.empty(arnewshape)
+    arnew[:ar1shape[0]] = arrays[0]
+    arnew[ar1shape[0]:arnewshape[0]] = arrays[1]
+    return(arnew)
 
 ################################
 class data:
@@ -25,7 +60,8 @@ class data:
         self.batch_size = batch_size
         self.datafile = datafile
 
-        mydat = self.loaddata( datafile, isZip=True, shortcut=shortcut)
+        # TODO: npz load here to see if it cuts the time!
+        mydat = self.loaddata( datafile, isZip=False, shortcut=shortcut)
         self.inputdat = mydat["inputdat"]
         self.outputdat = mydat["outputdat"]
 
@@ -47,39 +83,19 @@ class data:
             # rest
 
             if not shortcut:
-                #### try loading in parallel
-                if False:
-                    # mp.Pool can't pickle and mp appears to use pickle to transfer objects=bad for BIG
-                    #pool = mp.Pool(processes=2)
-                    pool = mp.pool.ThreadPool(processes=32)
-                    # fixes transfer problem: multiprocessing.pool.MaybeEncodingError: Error sending result:
-                    # 'TypeError(“cannot serialize '_io.BufferedReader' object”,)'
-                    manyresults = [pool.apply_async(loadonefile, (ff,), {'myzfname':zfname}) for ff in filenames]
-                    for res in manyresults:
-                        tmp = res.get()
-                        tmprs = tmp['windowinput']
-                        inputdat = np.concatenate( (inputdat, tmprs), axis=0)
-                        tmprs = tmp['windowoutput']
-                        outputdat = np.concatenate( (outputdat, tmprs), axis=0)
-                if False:
-                    # mp.Pool can't pickle and mp appears to use pickle to transfer objects=bad for BIG
-                    pool = mp.Pool(processes=8)
-                    for tmp in pool.imap_unordered( mapcall, filenames ):
-                        tmprs = tmp['windowinput']
-                        inputdat = np.concatenate( (inputdat, tmprs), axis=0)
-                        tmprs = tmp['windowoutput']
-                        outputdat = np.concatenate( (outputdat, tmprs), axis=0)
                 if True:
                     for ii in range(1,len(filenames)):
                         df = filenames[ii]
-                        tmp = loadonefile(df, zf)
+                        tmp = loadonefile(df, myzfname=zfname)
                         tmprs = tmp['windowinput']
-                        inputdat = np.concatenate( (inputdat, tmprs), axis=0)
+                        print("loadfilenames concat1")
+                        inputdat = timeit(np.concatenate, (inputdat, tmprs), axis=0)
                         tmprs = tmp['windowoutput']
-                        outputdat = np.concatenate( (outputdat, tmprs), axis=0)
+                        print("loadfilenames concat2")
+                        outputdat = timeit(np.concatenate, (outputdat, tmprs), axis=0)
 
-            print("loadfilenames final inputdat.shape", inputdat.shape)
-            print("loadfilenames final outputdat.shape", outputdat.shape)
+            #print("loadfilenames final inputdat.shape", inputdat.shape)
+            #print("loadfilenames final outputdat.shape", outputdat.shape)
 
             return( { "inputdat": inputdat, "outputdat": outputdat} )
         ####
@@ -89,9 +105,7 @@ class data:
         filenames=open(datafile).read().splitlines()
         if not isZip:
             mydat = loadfilenames( filenames )
-            print("loaddata final inputdat.shape", inputdat.shape)
-            print("loaddata final outputdat.shape", outputdat.shape)
-            return( { "inputdat": mydat["inputdat"], "outputdat": mydat["outputdat"]} )
+            return( mydat ) # { "inputdat": mydat["inputdat"], "outputdat": mydat["outputdat"]} )
         else:
             first=True
             for ff in filenames:
@@ -140,3 +154,20 @@ def printit( x ):
       for ff in x[bb]:
         feats.append("%s" % str(ff))
       print("%d: %s" % (bb," ".join(feats)))
+
+################################
+
+if __name__ == "__main__":
+
+    ### load the data from sys.argv[1]
+    t0=time.time()
+    data_loader = data( 128, sys.argv[1])
+    t1=time.time()
+    print("time data_loader",str(t1-t0))
+
+    ### save the data as npz in sys.argv[2]
+    t0=time.time()
+    np.savez_compressed(sys.argv[2], windowinput=data_loader.inputdat, windowoutput=data_loader.outputdat)
+    t1=time.time()
+    print("time savez_compressed",str(t1-t0))
+

@@ -3,7 +3,6 @@
 from __future__ import print_function
 import argparse
 import time
-import datetime
 import os
 import sys
 import tensorflow as tf
@@ -15,33 +14,34 @@ from . import data
 ################################
 def train(args):
 
-    t0=datetime.datetime.now()
-    data_loader = data.data( args.batch_size, sys.argv[2])
-    t1=datetime.datetime.now()
-    print("time data_loader",str(t1-t0))
-
-    # get test if there
-    data_loader_test = None
-    if len(sys.argv)>3:
-        t0=datetime.datetime.now()
-        data_loader_test = data.data( args.batch_size, sys.argv[3])
-        t1=datetime.datetime.now()
-        print("time data_loader test",str(t1-t0))
-
-    # check compatibility if training is continued from previously saved model
-    if args.init_from is not None:
-        # check if all necessary files exist
-        assert os.path.isdir(args.init_from)," %s must be a a path" % args.init_from
-        ckpt = tf.train.latest_checkpoint(args.init_from)
-        assert ckpt, "No checkpoint found"
-
-    if not os.path.isdir(args.save_dir):
-        os.makedirs(args.save_dir)
 
     #with tf.device("/cpu:0"):
     #with tf.device("/gpu:3"):
     if True:
         model = Model(args)
+
+        t0=time.time()
+        data_loader = data.data( args.batch_size, sys.argv[2])
+        t1=time.time()
+        print("time data_loader",str(t1-t0))
+
+        # get test if there
+        data_loader_test = None
+        if len(sys.argv)>3:
+            t0=time.time()
+            data_loader_test = data.data( args.batch_size, sys.argv[3])
+            t1=time.time()
+            print("time data_loader test",str(t1-t0))
+
+        # check compatibility if training is continued from previously saved model
+        if args.init_from is not None:
+            # check if all necessary files exist
+            assert os.path.isdir(args.init_from)," %s must be a a path" % args.init_from
+            ckpt = tf.train.latest_checkpoint(args.init_from)
+            assert ckpt, "No checkpoint found"
+
+        if not os.path.isdir(args.save_dir):
+            os.makedirs(args.save_dir)
 
         with tf.Session() as sess:
             # instrument for tensorboard
@@ -57,21 +57,23 @@ def train(args):
 
             print("# args.num_epochs", args.num_epochs, "args.batch_size", args.batch_size, "num_batches", data_loader.num_batches)
 
+            testLossAvgOLD = 999.9E+99
             for e in range(args.num_epochs):
                 storeloss = []
                 data_loader.reset_batch_pointer()
                 for b in range(data_loader.num_batches):
                     start = time.time()
                     x, y = data_loader.next_batch()
-                    #### Try to predict only the first full HP at [1]
-                    yid = y[:,1,0:4]
-                    ylen = y[:,1,4:]
+                    #### Try to predict only the first full HP at [0]
+                    yid = y[:,0,0:4]
+                    ylen = y[:,0,4:]
 
                     #myfit=model.model.fit( x, [yid,ylen], epochs=1, batch_size=1,verbose=2)
-                    myfit = model.model.train_on_batch( x, [yid,ylen])
+                    print("train ylen.shape",ylen.shape)
+                    myfit = model.model.train_on_batch( x, [ylen])
                     end = time.time()
                     print("epoch %d batch %d time %f" % (e, b, end-start))
-                    for (kk,vv) in zip(model.model.metrics_names,myfit):
+                    for (kk,vv) in zip(model.model.metrics_names,[myfit]):
                           print("epoch %d batch %d trainMetric %s %f batchsize %d" % (e ,b ,kk,vv, x.shape[0]))
                           if kk=="loss":
                               storeloss.append( (vv,x.shape[0]) )
@@ -103,12 +105,13 @@ def train(args):
                         data_loader_test.reset_batch_pointer()
                         for b in range(data_loader_test.num_batches):
                             x, y = data_loader_test.next_batch()
-                            #### Try to predict only the first full HP at [1]
-                            yid = y[:,1,0:4]
-                            ylen = y[:,1,4:]
+                            #### Try to predict only the first full HP at [0]
+                            yid = y[:,0,0:4]
+                            ylen = y[:,0,4:]
                             #mytest=model.model.evaluate( x, [yid,ylen],verbose=0)
-                            mytest=model.model.test_on_batch( x, [yid,ylen])
-                            for (kk,vv) in zip(model.model.metrics_names,mytest):
+                            print("test ylen.shape",ylen.shape)
+                            mytest=model.model.test_on_batch( x, [ylen])
+                            for (kk,vv) in zip(model.model.metrics_names,[mytest]):
                                 print("epoch %d batch %d testMetric %s %f batchsize %d" % (e ,b ,kk,vv, x.shape[0]))
                                 if kk=="loss":
                                     storeloss.append( (vv,x.shape[0]) )
@@ -119,17 +122,27 @@ def train(args):
                         for xx in storeloss:
                             testsum += xx[0]*xx[1]
                             testnum += xx[1]
-                        test_loss = testsum/float(testnum)
-                        print("epoch %d testLossAvg %f" % (e , test_loss))
+                        testLossAvg = testsum/float(testnum)
+                        print("epoch %d testLossAvg %f" % (e , testLossAvg))
+                        if testLossAvg > testLossAvgOLD:
+                            print("EARLY STOPPING:",testLossAvg,testLossAvgOLD)
+                            return()
+                        else:
+                            testLossAvgOLD = testLossAvg
 
 if __name__ == '__main__':
 
-    print("time begin",str(datetime.datetime.now()))
+    print("time begin",str(time.strftime('%Y-%m-%d %H:%M %Z', time.localtime(time.time()))))
 
     exec(open(sys.argv[1]).read())
     args.init_from = None
 
+    for aa in sys.argv:
+        if "EXEC:" in aa:
+            toexec = aa.replace("EXEC:","")
+            exec(toexec)
+            
     print("-------")
     train(args)
 
-    print("time end",str(datetime.datetime.now()))
+    print("time end",str(time.strftime('%Y-%m-%d %H:%M %Z', time.localtime(time.time()))))
