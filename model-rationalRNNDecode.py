@@ -27,7 +27,7 @@ class Model():
 
         hidden_size= 64
         #KK.layers.TimeDistributed(majority)
-        rnn1 = KK.layers.GRU( hidden_size, return_sequences=True)(majority)
+        rnn1 = KK.layers.GRU( hidden_size, return_sequences=True)(bottleConstantTime)
 
         predictionsHPLEN = KK.layers.Dense(33, activation='softmax')(rnn1)
         predictionsHPID = KK.layers.Dense(4, activation='softmax')(rnn1)

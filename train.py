@@ -64,19 +64,17 @@ def train(args):
                 for b in range(data_loader.num_batches):
                     start = time.time()
                     x, y = data_loader.next_batch()
-                    #### Try to predict only the first full HP at [0]
-                    yid = y[:,0,0:4]
-                    ylen = y[:,0,4:]
+                    yid = y[:,:,0:4]
+                    ylen = y[:,:,4:]
 
                     #myfit=model.model.fit( x, [yid,ylen], epochs=1, batch_size=1,verbose=2)
-                    print("train ylen.shape",ylen.shape)
-                    myfit = model.model.train_on_batch( x, [ylen])
+                    myfit = model.model.train_on_batch( x, [yid,ylen])  # 3 losses [5.1985407, 1.581759, 3.6167817]
                     end = time.time()
                     print("epoch %d batch %d time %f" % (e, b, end-start))
                     for (kk,vv) in zip(model.model.metrics_names,[myfit]):
-                          print("epoch %d batch %d trainMetric %s %f batchsize %d" % (e ,b ,kk,vv, x.shape[0]))
+                          print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
                           if kk=="loss":
-                              storeloss.append( (vv,x.shape[0]) )
+                              storeloss.append( (vv[0],x.shape[0]) )
 
                 #writer.add_summary(summ, e * data_loader.num_batches + b)
                 # compute average loss across all batches
@@ -105,16 +103,15 @@ def train(args):
                         data_loader_test.reset_batch_pointer()
                         for b in range(data_loader_test.num_batches):
                             x, y = data_loader_test.next_batch()
-                            #### Try to predict only the first full HP at [0]
-                            yid = y[:,0,0:4]
-                            ylen = y[:,0,4:]
+                            yid = y[:,:,0:4]
+                            ylen = y[:,:,4:]
+
                             #mytest=model.model.evaluate( x, [yid,ylen],verbose=0)
-                            print("test ylen.shape",ylen.shape)
-                            mytest=model.model.test_on_batch( x, [ylen])
+                            mytest=model.model.test_on_batch( x, [yid,ylen]) # 3 losses [5.1985407, 1.581759, 3.6167817]
                             for (kk,vv) in zip(model.model.metrics_names,[mytest]):
-                                print("epoch %d batch %d testMetric %s %f batchsize %d" % (e ,b ,kk,vv, x.shape[0]))
+                                print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
                                 if kk=="loss":
-                                    storeloss.append( (vv,x.shape[0]) )
+                                    storeloss.append( (vv[0],x.shape[0]) )
 
                         # compute average loss across all batches
                         testnum = 0
