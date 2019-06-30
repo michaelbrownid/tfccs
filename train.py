@@ -72,7 +72,7 @@ def train(args):
                     end = time.time()
                     print("epoch %d batch %d time %f" % (e, b, end-start))
                     for (kk,vv) in zip(model.model.metrics_names,[myfit]):
-                          print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
+                          #print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
                           if kk=="loss":
                               storeloss.append( (vv[0],x.shape[0]) )
 
@@ -109,7 +109,7 @@ def train(args):
                             #mytest=model.model.evaluate( x, [yid,ylen],verbose=0)
                             mytest=model.model.test_on_batch( x, [yid,ylen]) # 3 losses [5.1985407, 1.581759, 3.6167817]
                             for (kk,vv) in zip(model.model.metrics_names,[mytest]):
-                                print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
+                                #print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
                                 if kk=="loss":
                                     storeloss.append( (vv[0],x.shape[0]) )
 
@@ -121,11 +121,10 @@ def train(args):
                             testnum += xx[1]
                         testLossAvg = testsum/float(testnum)
                         print("epoch %d testLossAvg %f" % (e , testLossAvg))
-                        if testLossAvg > testLossAvgOLD:
-                            print("EARLY STOPPING:",testLossAvg,testLossAvgOLD)
-                            return()
-                        else:
-                            testLossAvgOLD = testLossAvg
+                        if testLossAvg > 1.1*testLossAvgOLD:
+                            print("NOT EARLY STOPPING:",testLossAvg,testLossAvgOLD)
+                            #return()
+                        testLossAvgOLD = testLossAvg
 
 if __name__ == '__main__':
 

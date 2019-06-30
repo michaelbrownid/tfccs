@@ -43,9 +43,9 @@ def test(args):
 
                 start = time.time()
                 x, y = data_loader.next_batch()
-                #### Try to predict only the first full HP at [1]
-                yid = y[:,1,0:4]
-                ylen = y[:,1,4:]
+                
+                yid = y[:,:,0:4]
+                ylen = y[:,:,4:]
 
                 predictions = model.model.predict(x)
 
@@ -56,7 +56,7 @@ def test(args):
                 #np.save("test.1.predictions",predictions[1])
 
                 #### SINGLE HP
-                if True:
+                if False:
                     fp = open("test.0.preds.txt","w")
                     for ii in range(predictions[0].shape[0]):
                         print("0\t%d\t%d\t%s\t-1\t%s" % (ii,
@@ -102,8 +102,8 @@ def test(args):
                 ################################
                 # take max for error rate
 
-                ####
-                if True:
+                #### SINGLE HP
+                if False:
                     numerr = 0
                     total = 0
                     for ii in range(predictions[1].shape[0]):
@@ -136,8 +136,8 @@ def test(args):
                             total+=1
                     print("error rate 0 %f = %d / %d" % (float(numerr)/total,numerr,total))
 
-                ####
-                if False:
+                #### All 128 HPs
+                if True:
                     numerr = 0
                     total = 0
                     for ii in range(predictions[1].shape[0]):
@@ -161,7 +161,8 @@ def test(args):
                         for jj in range(predictions[0].shape[1]):
                             truth = yid[ii,jj]
                             # skip null
-                            # if truth[0]==0.25 and truth[1]==0.25 and truth[2]==0.25 and truth[3]==0.25: continue
+                            if truth[0]==0.25 and truth[1]==0.25 and truth[2]==0.25 and truth[3]==0.25:
+                                continue
                             estimate = predictions[0][ii,jj]
                             truemax = np.argmax(truth)
                             estmax = np.argmax(estimate)
@@ -171,6 +172,8 @@ def test(args):
                                 print("err0 %d %d true est prob" % (ii, jj), truemax,estmax,estimate[estmax])
                             total+=1
                     print("error rate 0 %f = %d / %d" % (float(numerr)/total,numerr,total))
+
+                break # only look at 0th batch for time
 
 if __name__ == '__main__':
     exec(open(sys.argv[1]).read())
