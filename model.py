@@ -1,1 +1,1 @@
-model-rationalRNNDecode.py
+model_column_majority.py

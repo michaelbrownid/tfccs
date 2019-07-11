@@ -55,15 +55,16 @@ def myconcatenate( arrays, **kwargs ):
 ################################
 class data:
     ################################
-    def __init__(self, batch_size, datafile, shortcut=False):
+    def __init__(self, batch_size, datafile, isZip=False, shortcut=False):
 
         self.batch_size = batch_size
         self.datafile = datafile
 
         # TODO: npz load here to see if it cuts the time!
-        mydat = self.loaddata( datafile, isZip=False, shortcut=shortcut)
+        mydat = self.loaddata( datafile, isZip=isZip, shortcut=shortcut)
         self.inputdat = mydat["inputdat"]
         self.outputdat = mydat["outputdat"]
+        self.outputdatFULL = mydat["outputdatFULL"]
 
         self.create_batches()
         self.reset_batch_pointer()
@@ -80,24 +81,38 @@ class data:
                 tmp = loadonefile(df, myzfname=zfname)
                 inputdat = tmp['windowinput']
                 outputdat = tmp['windowoutput']
+                outputdatFULL = tmp['windowoutputFULL']
             # rest
 
             if not shortcut:
                 if True:
                     for ii in range(1,len(filenames)):
                         df = filenames[ii]
+                        print("df",df)
                         tmp = loadonefile(df, myzfname=zfname)
+                        tmprs = tmp['windowoutputFULL']
+                        if len(tmprs.shape)!=3:
+                            print("ERROR! skipping",ii,df,"full has incorrect shape",tmprs.shape)
+                            continue
+                        if tmprs.shape[1]!=640 or tmprs.shape[2]!=5:
+                            print("ERROR! skipping",ii,df,"full has incorrect shape",tmprs.shape)
+                            continue
+
                         tmprs = tmp['windowinput']
                         print("loadfilenames concat1")
                         inputdat = timeit(np.concatenate, (inputdat, tmprs), axis=0)
                         tmprs = tmp['windowoutput']
                         print("loadfilenames concat2")
                         outputdat = timeit(np.concatenate, (outputdat, tmprs), axis=0)
+                        tmprs = tmp['windowoutputFULL']
+                        print("tmprs.shape",tmprs.shape)
+                        print("loadfilenames concat3")
+                        outputdatFULL = timeit(np.concatenate, (outputdatFULL, tmprs), axis=0)
 
             #print("loadfilenames final inputdat.shape", inputdat.shape)
             #print("loadfilenames final outputdat.shape", outputdat.shape)
 
-            return( { "inputdat": inputdat, "outputdat": outputdat} )
+            return( { "inputdat": inputdat, "outputdat": outputdat, "outputdatFULL": outputdatFULL} )
         ####
 
         #### filenames can be a list of zip files with ~200 numpy arrays.
@@ -105,7 +120,7 @@ class data:
         filenames=open(datafile).read().splitlines()
         if not isZip:
             mydat = loadfilenames( filenames )
-            return( mydat ) # { "inputdat": mydat["inputdat"], "outputdat": mydat["outputdat"]} )
+            return( mydat )
         else:
             first=True
             for ff in filenames:
@@ -117,14 +132,17 @@ class data:
                 if first:
                     inputdat = mydat["inputdat"]
                     outputdat = mydat["outputdat"]
+                    outputdatFULL = mydat["outputdatFULL"]
                     first=False
                     if shortcut: break
                 else:
                     inputdat = np.concatenate( (inputdat, mydat["inputdat"]),axis=0)
                     outputdat = np.concatenate( (outputdat, mydat["outputdat"]),axis=0)
+                    outputdat = np.concatenate( (outputdatFULL, mydat["outputdatFULL"]),axis=0)
             print("loaddata zip final inputdat.shape", inputdat.shape)
             print("loaddata zip final outputdat.shape", outputdat.shape)
-            return( { "inputdat": inputdat, "outputdat": outputdat} )
+            print("loaddata zip final outputdatFULL.shape", outputdatFULL.shape)
+            return( { "inputdat": inputdat, "outputdat": outputdat, "outputdatFULL": outputdatFULL} )
 
     ################################
     # seperate the whole data into different batches.
@@ -142,7 +160,7 @@ class data:
         mystart = self.pointer * self.batch_size
         myend = (self.pointer+1) * self.batch_size
         inputs = self.inputdat[mystart:myend,]
-        outputs = self.outputdat[mystart:myend,]
+        outputs = self.outputdatFULL[mystart:myend,]
         self.pointer += 1
         return( inputs, outputs )
 
@@ -161,13 +179,16 @@ if __name__ == "__main__":
 
     ### load the data from sys.argv[1]
     t0=time.time()
-    data_loader = data( 128, sys.argv[1])
+    data_loader = data( 128, sys.argv[1], isZip=True)
     t1=time.time()
     print("time data_loader",str(t1-t0))
 
     ### save the data as npz in sys.argv[2]
     t0=time.time()
-    np.savez_compressed(sys.argv[2], windowinput=data_loader.inputdat, windowoutput=data_loader.outputdat)
+    np.savez_compressed(sys.argv[2],
+                        windowinput=data_loader.inputdat,
+                        windowoutput=data_loader.outputdat,
+                        windowoutputFULL=data_loader.outputdatFULL)
     t1=time.time()
     print("time savez_compressed",str(t1-t0))
 
