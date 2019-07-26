@@ -42,8 +42,13 @@ def train(args):
 
         if not os.path.isdir(args.save_dir):
             os.makedirs(args.save_dir)
+            
+        tfconfig=tf.ConfigProto()
+        # tfconfig.allow_soft_placement=True
+        # tfconfig.log_device_placement=True
+        # tfconfig.gpu_options.allow_growth=True
 
-        with tf.Session() as sess:
+        with tf.Session( config=tfconfig ) as sess:
             # instrument for tensorboard
             summaries = tf.summary.merge_all()
             writer = tf.summary.FileWriter(os.path.join(args.log_dir, time.strftime("%Y-%m-%d-%H-%M-%S")))
@@ -64,17 +69,17 @@ def train(args):
                 for b in range(data_loader.num_batches):
                     start = time.time()
                     x, y = data_loader.next_batch()
-                    #yid = y[:,:,0:4]
-                    #ylen = y[:,:,4:]
+                    yid = y[:,:,0:4]
+                    ylen = y[:,:,4:]
 
                     #myfit=model.model.fit( x, [yid,ylen], epochs=1, batch_size=1,verbose=2)
-                    myfit = model.model.train_on_batch( x, y)  # 3 losses [5.1985407, 1.581759, 3.6167817]
+                    myfit = model.model.train_on_batch( x, [yid,ylen])
                     end = time.time()
-                    print("epoch %d batch %d time %f" % (e, b, end-start))
+                    #print("epoch %d batch %d time %f" % (e, b, end-start))
                     for (kk,vv) in zip(model.model.metrics_names,[myfit]):
                           #print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
                           if kk=="loss":
-                              storeloss.append( (vv,x.shape[0]) ) # vv[0] for multiple lossses
+                              storeloss.append( (vv[0],x.shape[0]) ) # vv[0] for multiple lossses
 
                 #writer.add_summary(summ, e * data_loader.num_batches + b)
                 # compute average loss across all batches
@@ -103,15 +108,15 @@ def train(args):
                         data_loader_test.reset_batch_pointer()
                         for b in range(data_loader_test.num_batches):
                             x, y = data_loader_test.next_batch()
-                            #yid = y[:,:,0:4]
-                            #ylen = y[:,:,4:]
+                            yid = y[:,:,0:4]
+                            ylen = y[:,:,4:]
 
                             #mytest=model.model.evaluate( x, [yid,ylen],verbose=0)
-                            mytest=model.model.test_on_batch( x, y) # 3 losses [5.1985407, 1.581759, 3.6167817]
+                            mytest=model.model.test_on_batch( x, [yid,ylen])
                             for (kk,vv) in zip(model.model.metrics_names,[mytest]):
                                 #print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
                                 if kk=="loss":
-                                    storeloss.append( (vv,x.shape[0]) ) # vv[0] for multiple losses
+                                    storeloss.append( (vv[0],x.shape[0]) ) # vv[0] for multiple losses
 
                         # compute average loss across all batches
                         testnum = 0
@@ -121,9 +126,9 @@ def train(args):
                             testnum += xx[1]
                         testLossAvg = testsum/float(testnum)
                         print("epoch %d testLossAvg %f" % (e , testLossAvg))
-                        if testLossAvg > 1.1*testLossAvgOLD:
-                            print("NOT EARLY STOPPING:",testLossAvg,testLossAvgOLD)
-                            #return()
+                        if testLossAvg > 1.0*testLossAvgOLD:
+                            print("EARLY STOPPING:",testLossAvg,testLossAvgOLD)
+                            return()
                         testLossAvgOLD = testLossAvg
 
 if __name__ == '__main__':
