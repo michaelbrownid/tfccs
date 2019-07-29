@@ -17,6 +17,7 @@ def timeit( func, *args, **kwargs ):
 #def mult(x,y):
 #    return(x*y)
 #timeit(mult, 5,3)
+#inputdat = timeit(np.concatenate, (inputdat, tmprs), axis=0)
 
 ################################
 def loadonefile( filename, myzfname=None ):
@@ -30,41 +31,25 @@ def loadonefile( filename, myzfname=None ):
         zf.close()
     print("loadonefile np.load")
     tmp = timeit( np.load, prefix+filename )
+    tmpdat = dict(tmp) # force lazy load of all data!!!!
     #print("loadonefile",  filename, "tmp['windowinput'].shape", tmp['windowinput'].shape)
     if myzfname is not None: os.remove(prefix+filename)
-    return(tmp)
-
-################################
-def myconcatenate( arrays, **kwargs ):
-    """"concatenate / append two numpy arrays
-        This is slow and takes linear time: 
-        inputdat = timeit(np.concatenate, (inputdat, tmprs), axis=0)
-    """
-    ar1shape = arrays[0].shape
-    ar2shape = arrays[1].shape
-    if not len(ar1shape)==len(ar2shape):
-        print("ERROR can't concat arrays of different dimensions")
-        sys.exit(1)
-    arnewshape = list(ar1shape)
-    arnewshape[0] = ar1shape[0]+ar2shape[0]
-    arnew = np.empty(arnewshape)
-    arnew[:ar1shape[0]] = arrays[0]
-    arnew[ar1shape[0]:arnewshape[0]] = arrays[1]
-    return(arnew)
+    return(tmpdat)
 
 ################################
 class data:
     ################################
-    def __init__(self, batch_size, datafile, isZip=False, shortcut=False):
+    def __init__(self, batch_size, datafile, inputdatName="input", outputdatName="output", isZip=False, shortcut=False):
 
         self.batch_size = batch_size
         self.datafile = datafile
+        self.inputdatName = inputdatName
+        self.outputdatName = outputdatName
 
-        # TODO: npz load here to see if it cuts the time!
-        mydat = self.loaddata( datafile, isZip=isZip, shortcut=shortcut)
-        self.inputdat = mydat["inputdat"]
-        self.outputdat = mydat["outputdat"]
-        self.outputdatFULL = mydat["outputdatFULL"]
+        self.loaddata( datafile, isZip=isZip, shortcut=shortcut)
+        # self.inputdat = mydat["inputdat"]
+        # self.outputdat = mydat["outputdat"]
+        # self.outputdatFULL = mydat["outputdatFULL"]
 
         self.create_batches()
         self.reset_batch_pointer()
@@ -79,88 +64,63 @@ class data:
             for ii in [0]:
                 df = filenames[ii]
                 tmp = loadonefile(df, myzfname=zfname)
-                inputdat = tmp['windowinput']
-                outputdat = tmp['windowoutput']
-                outputdatFULL = tmp['windowoutputFULL']
+                mydat = tmp
             # rest
-
             if not shortcut:
-                if True:
                     for ii in range(1,len(filenames)):
                         df = filenames[ii]
-                        print("df",df)
                         tmp = loadonefile(df, myzfname=zfname)
-                        tmprs = tmp['windowoutputFULL']
-                        if len(tmprs.shape)!=3:
-                            print("ERROR! skipping",ii,df,"full has incorrect shape",tmprs.shape)
-                            continue
-                        if tmprs.shape[1]!=640 or tmprs.shape[2]!=5:
-                            print("ERROR! skipping",ii,df,"full has incorrect shape",tmprs.shape)
-                            continue
-
-                        tmprs = tmp['windowinput']
-                        print("loadfilenames concat1")
-                        inputdat = timeit(np.concatenate, (inputdat, tmprs), axis=0)
-                        tmprs = tmp['windowoutput']
-                        print("loadfilenames concat2")
-                        outputdat = timeit(np.concatenate, (outputdat, tmprs), axis=0)
-                        tmprs = tmp['windowoutputFULL']
-                        print("tmprs.shape",tmprs.shape)
-                        print("loadfilenames concat3")
-                        outputdatFULL = timeit(np.concatenate, (outputdatFULL, tmprs), axis=0)
-
-            #print("loadfilenames final inputdat.shape", inputdat.shape)
-            #print("loadfilenames final outputdat.shape", outputdat.shape)
-
-            return( { "inputdat": inputdat, "outputdat": outputdat, "outputdatFULL": outputdatFULL} )
+                        for kk in tmp.keys():
+                            mydat[kk] = np.concatenate( (mydat[kk], tmp[kk]), axis=0 )
+            return(mydat)
         ####
 
         #### filenames can be a list of zip files with ~200 numpy arrays.
         #### load all numpy arrays in each zip file
         filenames=open(datafile).read().splitlines()
         if not isZip:
-            mydat = loadfilenames( filenames )
-            return( mydat )
+            self.dat = loadfilenames( filenames )
         else:
             first=True
             for ff in filenames:
                 print("loaddata zipfile",ff)
                 zf = zipfile.ZipFile(ff, mode='r')
-                filenames = zf.namelist()
+                zipfilenames = zf.namelist()
                 zf.close()
-                mydat = loadfilenames(filenames, ff)
+                mydat = loadfilenames(zipfilenames, ff)
                 if first:
-                    inputdat = mydat["inputdat"]
-                    outputdat = mydat["outputdat"]
-                    outputdatFULL = mydat["outputdatFULL"]
+                    self.dat = mydat
                     first=False
                     if shortcut: break
                 else:
-                    inputdat = np.concatenate( (inputdat, mydat["inputdat"]),axis=0)
-                    outputdat = np.concatenate( (outputdat, mydat["outputdat"]),axis=0)
-                    outputdat = np.concatenate( (outputdatFULL, mydat["outputdatFULL"]),axis=0)
-            print("loaddata zip final inputdat.shape", inputdat.shape)
-            print("loaddata zip final outputdat.shape", outputdat.shape)
-            print("loaddata zip final outputdatFULL.shape", outputdatFULL.shape)
-            return( { "inputdat": inputdat, "outputdat": outputdat, "outputdatFULL": outputdatFULL} )
+                    for kk in mydat.keys():
+                        self.dat[kk] = np.concatenate( (self.dat[kk],mydat[kk]), axis=0 )
+
+        for kk in self.dat.keys():
+            print("loaddata final shape", kk, self.dat[kk].shape)
 
     ################################
     # seperate the whole data into different batches.
     def create_batches(self):
-        if (self.inputdat.shape[0] % self.batch_size) == 0:
+        numpoints = self.dat[ list(self.dat.keys())[0] ].shape[0]
+        if (numpoints % self.batch_size) == 0:
             extra = 0
         else:
             extra = 1
-        self.num_batches = int(self.inputdat.shape[0]/self.batch_size)+extra
+        self.num_batches = int(numpoints/self.batch_size)+extra
+        print("create_batches inputdat  shape", self.inputdatName, self.dat[self.inputdatName].shape)
+        print("create_batches outputdat shape", self.outputdatName, self.dat[self.outputdatName].shape)
 
     def reset_batch_pointer(self):
         self.pointer = 0
 
     def next_batch(self):
+        fullinputdat = self.dat[self.inputdatName]
+        fulloutputdat = self.dat[self.outputdatName]
         mystart = self.pointer * self.batch_size
         myend = (self.pointer+1) * self.batch_size
-        inputs = self.inputdat[mystart:myend,]
-        outputs = self.outputdatFULL[mystart:myend,]
+        inputs = fullinputdat[mystart:myend,]
+        outputs = fulloutputdat[mystart:myend,]
         self.pointer += 1
         return( inputs, outputs )
 
@@ -185,10 +145,10 @@ if __name__ == "__main__":
 
     ### save the data as npz in sys.argv[2]
     t0=time.time()
-    np.savez_compressed(sys.argv[2],
-                        windowinput=data_loader.inputdat,
-                        windowoutput=data_loader.outputdat,
-                        windowoutputFULL=data_loader.outputdatFULL)
+    name2dat= {}
+    for kk in data_loader.dat.keys():
+        name2dat[kk] = data_loader.dat[kk]
+    np.savez_compressed(sys.argv[2], **name2dat) # this will save each of the data under the name
     t1=time.time()
     print("time savez_compressed",str(t1-t0))
 

@@ -21,7 +21,9 @@ def train(args):
         model = Model(args)
 
         t0=time.time()
-        data_loader = data.data( args.batch_size, sys.argv[2])
+        data_loader = data.data( args.batch_size, sys.argv[2],
+                                 inputdatName=args.inputdatName,
+                                 outputdatName=args.outputdatName)
         t1=time.time()
         print("time data_loader",str(t1-t0))
 
@@ -29,7 +31,9 @@ def train(args):
         data_loader_test = None
         if len(sys.argv)>3:
             t0=time.time()
-            data_loader_test = data.data( args.batch_size, sys.argv[3])
+            data_loader_test = data.data( args.batch_size, sys.argv[3],
+                                          inputdatName=args.inputdatName,
+                                          outputdatName=args.outputdatName)
             t1=time.time()
             print("time data_loader test",str(t1-t0))
 
@@ -69,17 +73,23 @@ def train(args):
                 for b in range(data_loader.num_batches):
                     start = time.time()
                     x, y = data_loader.next_batch()
-                    yid = y[:,:,0:4]
-                    ylen = y[:,:,4:]
+                    MODEHP = y.shape[2] == (33+4)
+                    if MODEHP:
+                        yid = y[:,:,0:4]
+                        ylen = y[:,:,4:]
 
                     #myfit=model.model.fit( x, [yid,ylen], epochs=1, batch_size=1,verbose=2)
-                    myfit = model.model.train_on_batch( x, [yid,ylen])
+                    if MODEHP:
+                        myfit = model.model.train_on_batch( x, [yid,ylen])
+                    else:
+                        myfit = model.model.train_on_batch( x, y )
                     end = time.time()
                     #print("epoch %d batch %d time %f" % (e, b, end-start))
                     for (kk,vv) in zip(model.model.metrics_names,[myfit]):
                           #print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
                           if kk=="loss":
-                              storeloss.append( (vv[0],x.shape[0]) ) # vv[0] for multiple lossses
+                              if not MODEHP: vv = [vv] # only single loss
+                              storeloss.append( (vv[0],x.shape[0]) )
 
                 #writer.add_summary(summ, e * data_loader.num_batches + b)
                 # compute average loss across all batches
@@ -108,14 +118,21 @@ def train(args):
                         data_loader_test.reset_batch_pointer()
                         for b in range(data_loader_test.num_batches):
                             x, y = data_loader_test.next_batch()
-                            yid = y[:,:,0:4]
-                            ylen = y[:,:,4:]
+                            MODEHP = y.shape[2] == (33+4)
+                            if MODEHP:
+                                yid = y[:,:,0:4]
+                                ylen = y[:,:,4:]
 
                             #mytest=model.model.evaluate( x, [yid,ylen],verbose=0)
-                            mytest=model.model.test_on_batch( x, [yid,ylen])
+                            if MODEHP:
+                                mytest = model.model.test_on_batch( x, [yid,ylen])
+                            else:
+                                mytest = model.model.test_on_batch( x, y )
+
                             for (kk,vv) in zip(model.model.metrics_names,[mytest]):
                                 #print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
                                 if kk=="loss":
+                                    if not MODEHP: vv = [vv] # only single loss
                                     storeloss.append( (vv[0],x.shape[0]) ) # vv[0] for multiple losses
 
                         # compute average loss across all batches
@@ -141,6 +158,7 @@ if __name__ == '__main__':
     for aa in sys.argv:
         if "EXEC:" in aa:
             toexec = aa.replace("EXEC:","")
+            print("toexec",toexec)
             exec(toexec)
             
     print("-------")

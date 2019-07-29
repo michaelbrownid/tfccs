@@ -13,7 +13,9 @@ from . import data
 ################################
 def test(args):
 
-    data_loader = data.data( args.batch_size, sys.argv[2],shortcut=True)
+    data_loader = data.data( args.batch_size, sys.argv[2],
+                                 inputdatName=args.inputdatName,
+                                 outputdatName=args.outputdatName)
 
     #with tf.device("/gpu:2"):
     if True:
@@ -177,5 +179,14 @@ def test(args):
 
 if __name__ == '__main__':
     exec(open(sys.argv[1]).read())
+    for aa in sys.argv:
+        if "EXEC:" in aa:
+            toexec = aa.replace("EXEC:","")
+            print("toexec",toexec)
+            exec(toexec)
+            
+    print("-------")
+    print(args)
+    print("-------")
 
     test(args)
