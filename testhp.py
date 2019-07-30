@@ -33,7 +33,14 @@ def test(args):
         model = Model(args)
 
         num=0
-        with tf.Session() as sess:
+
+        tfconfig=tf.ConfigProto()
+        tfconfig.allow_soft_placement=True
+        tfconfig.log_device_placement=True
+        tfconfig.gpu_options.allow_growth=True
+
+        with tf.Session( config=tfconfig ) as sess:
+
             sess.run(tf.global_variables_initializer())
             saver = tf.train.Saver(tf.global_variables())
             # restore model
@@ -186,7 +193,7 @@ if __name__ == '__main__':
             exec(toexec)
             
     print("-------")
-    print(args)
+    print(help(args))
     print("-------")
 
     test(args)
