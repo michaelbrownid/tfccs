@@ -47,9 +47,6 @@ class data:
         self.outputdatName = outputdatName
 
         self.loaddata( datafile, isZip=isZip, shortcut=shortcut)
-        # self.inputdat = mydat["inputdat"]
-        # self.outputdat = mydat["outputdat"]
-        # self.outputdatFULL = mydat["outputdatFULL"]
 
         self.create_batches()
         self.reset_batch_pointer()
@@ -108,19 +105,37 @@ class data:
         else:
             extra = 1
         self.num_batches = int(numpoints/self.batch_size)+extra
-        print("create_batches inputdat  shape", self.inputdatName, self.dat[self.inputdatName].shape)
-        print("create_batches outputdat shape", self.outputdatName, self.dat[self.outputdatName].shape)
+        #print("create_batches inputdat  shape", self.inputdatName, self.dat[self.inputdatName].shape)
+        #print("create_batches outputdat shape", self.outputdatName, self.dat[self.outputdatName].shape)
 
     def reset_batch_pointer(self):
         self.pointer = 0
 
     def next_batch(self):
-        fullinputdat = self.dat[self.inputdatName]
-        fulloutputdat = self.dat[self.outputdatName]
         mystart = self.pointer * self.batch_size
         myend = (self.pointer+1) * self.batch_size
-        inputs = fullinputdat[mystart:myend,]
-        outputs = fulloutputdat[mystart:myend,]
+
+        if self.inputdatName=="windowinputCTX":
+            # provide both windowinput and windowinputKmer
+            inputs = [ self.dat["windowinput"][mystart:myend,],
+                       self.dat["windowinputKmer"][mystart:myend,] ]
+        else:
+            fullinputdat = self.dat[self.inputdatName]
+            inputs = fullinputdat[mystart:myend,]
+
+        if "HP" in self.outputdatName:
+            # provide both HP identity and length
+            outputs = [ self.dat[self.outputdatName][mystart:myend,:,0:4],
+                        self.dat[self.outputdatName][mystart:myend,:,4:] ]
+        elif "Kmer" in self.outputdatName:
+            fulloutputdat = self.dat[self.outputdatName]
+            #outputs = np.expand_dims(fulloutputdat[mystart:myend,],2) # (14986, 640) -> (14986, 640, 1)
+            outputs = fulloutputdat[mystart:myend,].astype("int32") # float->int
+            outputs = np.abs(outputs) # edge case -1 at end gets replaced with 1
+        else:
+            fulloutputdat = self.dat[self.outputdatName]
+            outputs = fulloutputdat[mystart:myend,]
+
         self.pointer += 1
         return( inputs, outputs )
 

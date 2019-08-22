@@ -14,7 +14,6 @@ from . import data
 ################################
 def train(args):
 
-
     #with tf.device("/cpu:0"):
     #with tf.device("/gpu:3"):
     if True:
@@ -53,13 +52,10 @@ def train(args):
         # tfconfig.gpu_options.allow_growth=True
 
         with tf.Session( config=tfconfig ) as sess:
-            # instrument for tensorboard
-            summaries = tf.summary.merge_all()
-            writer = tf.summary.FileWriter(os.path.join(args.log_dir, time.strftime("%Y-%m-%d-%H-%M-%S")))
-            writer.add_graph(sess.graph)
-
             sess.run(tf.global_variables_initializer())
+
             saver = tf.train.Saver(tf.global_variables())
+
             # restore model
             if args.init_from is not None:
                 saver.restore(sess, ckpt)
@@ -73,25 +69,32 @@ def train(args):
                 for b in range(data_loader.num_batches):
                     start = time.time()
                     x, y = data_loader.next_batch()
-                    MODEHP = y.shape[2] == (33+4)
-                    if MODEHP:
-                        yid = y[:,:,0:4]
-                        ylen = y[:,:,4:]
+
+                    # print("========")
+                    # print("y.shape",y.shape)
+                    # print("y[0,0]",y[0,0])
+                    # predictions = model.model.predict(x[0:2,])
+                    # print("predictions.shape",predictions.shape)
+                    # for oo in range(predictions.shape[0]):
+                    #     for cc in range(predictions.shape[1]):
+                    #         print("meanStdArgmax",oo,cc,np.mean(predictions[oo,cc]),np.std(predictions[oo,cc]),np.argmax(predictions[oo,cc]), np.max(predictions[oo,cc]), y[oo,cc], predictions[oo,cc,y[oo,cc]])
 
                     #myfit=model.model.fit( x, [yid,ylen], epochs=1, batch_size=1,verbose=2)
-                    if MODEHP:
-                        myfit = model.model.train_on_batch( x, [yid,ylen])
-                    else:
-                        myfit = model.model.train_on_batch( x, y )
+                    myfit = model.model.train_on_batch( x, y )
+
                     end = time.time()
                     #print("epoch %d batch %d time %f" % (e, b, end-start))
                     for (kk,vv) in zip(model.model.metrics_names,[myfit]):
                           #print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
                           if kk=="loss":
-                              if not MODEHP: vv = [vv] # only single loss
-                              storeloss.append( (vv[0],x.shape[0]) )
+                              if not isinstance(vv,list): vv = [vv] # only single loss
+                              # handle multiple inputs
+                              if isinstance(x,list):
+                                  myx = x[0]
+                              else:
+                                  myx=x
+                              storeloss.append( (vv[0],myx.shape[0]) )
 
-                #writer.add_summary(summ, e * data_loader.num_batches + b)
                 # compute average loss across all batches
                 trainnum = 0
                 trainsum = 0.0
@@ -107,10 +110,11 @@ def train(args):
                 if (e % args.save_every == 0) or (e == args.num_epochs-1):
                     checkpoint_path = os.path.join(args.save_dir, 'model.ckpt')
                     saver.save(sess, checkpoint_path, global_step=e * data_loader.num_batches + b)
+                    # with open("my_model.json","w") as f:
+                    #     f.write(model.model.to_json())
+                    # model.model.save_weights("my_model.h5")
+                    model.model.save("my_model_FULL.h5")
                     print("model saved to {}".format(checkpoint_path))
-                    # TODO: tried keras model saving to json and hd5
-                    # but got not serialable error.
-                    # https://github.com/tensorflow/tensorflow/issues/27112
 
                     # run the test set if there
                     if data_loader_test is not None:
@@ -118,22 +122,19 @@ def train(args):
                         data_loader_test.reset_batch_pointer()
                         for b in range(data_loader_test.num_batches):
                             x, y = data_loader_test.next_batch()
-                            MODEHP = y.shape[2] == (33+4)
-                            if MODEHP:
-                                yid = y[:,:,0:4]
-                                ylen = y[:,:,4:]
-
                             #mytest=model.model.evaluate( x, [yid,ylen],verbose=0)
-                            if MODEHP:
-                                mytest = model.model.test_on_batch( x, [yid,ylen])
-                            else:
-                                mytest = model.model.test_on_batch( x, y )
+                            mytest = model.model.test_on_batch( x, y )
 
                             for (kk,vv) in zip(model.model.metrics_names,[mytest]):
                                 #print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
                                 if kk=="loss":
-                                    if not MODEHP: vv = [vv] # only single loss
-                                    storeloss.append( (vv[0],x.shape[0]) ) # vv[0] for multiple losses
+                                    if not isinstance(vv,list): vv = [vv] # only single loss
+                                    # handle multiple inputs
+                                    if isinstance(x,list):
+                                        myx = x[0]
+                                    else:
+                                        myx=x
+                                    storeloss.append( (vv[0],myx.shape[0]) ) # vv[0] for multiple losses
 
                         # compute average loss across all batches
                         testnum = 0
@@ -147,6 +148,7 @@ def train(args):
                             print("EARLY STOPPING:",testLossAvg,testLossAvgOLD)
                             return()
                         testLossAvgOLD = testLossAvg
+                #sys.exit(1)
 
 if __name__ == '__main__':
 
