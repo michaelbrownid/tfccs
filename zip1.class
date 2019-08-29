@@ -4,10 +4,10 @@ class args:
     baseinfo=10
     hps = 128
     hpdist = 33
-    batch_size=128
-    num_epochs=128
+    batch_size=256
+    num_epochs=1024
     save_every=16
-    init_from = "save_zip1"
-    save_dir="save_zip1"
-    log_dir="logs_zip1"
+    init_from = "tfsave_zip1"
+    save_dir="tfsave_zip1"
+    log_dir="tflogs_zip1"
 

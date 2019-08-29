@@ -21,7 +21,8 @@ class Model():
         # call each position by base^Present, X^Missing. Could be 5 but using 16. Kernel=10-vector
         baseadj = KK.layers.Conv2D(16, kernel_size= (1, 1), activation='relu')(inputs)
 
-        majority = KK.backend.mean(baseadj, axis=[1])
+        #majority = KK.backend.mean(baseadj, axis=[1])
+        majority = KK.layers.Lambda( lambda xx: KK.backend.mean( xx, axis=[1]), name="majority")(baseadj)
 
         predBase = KK.layers.TimeDistributed( KK.layers.Dense(5, activation='softmax'))(majority)
 
