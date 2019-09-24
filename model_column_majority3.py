@@ -18,14 +18,16 @@ class Model():
 
         inputs = KK.layers.Input(shape=(args.rows,args.cols,args.baseinfo))
 
-        # call each position by base^Present, X^Missing. Could be 5 but using 16. Kernel=10-vector
-        convNum = 256
-        baseadj = KK.layers.Conv2D(convNum, kernel_size= (61, 2), activation='relu', padding="same")(inputs)
-        # layer: name conv2d outputshape [None, 16, 640, 128]
+        baseadj = KK.layers.Conv2D(args.modelNumConv2d, kernel_size= (args.modelKernelRows,args.modelKernelCols), activation='relu', padding="same")(inputs)
+        # layer: name conv2d outputshape [None, 16, 640, args.modelNumConv2d]
 
-        baseadjperm = KK.backend.permute_dimensions(baseadj,(0,2,1,3))
-        baseadjpermreshape = KK.layers.Reshape((args.cols, args.rows*convNum))(baseadjperm)
-        predBase0 = KK.layers.TimeDistributed( KK.layers.Dense(128, activation='softmax'))(baseadjpermreshape)
+        #baseadjperm = KK.backend.permute_dimensions(baseadj,(0,2,1,3))
+        baseadjperm = KK.layers.Lambda( lambda xx: KK.backend.permute_dimensions( xx, (0,2,1,3)), name="baseadjperm")(baseadj)
+
+        #baseadjpermreshape = KK.layers.Reshape((args.cols, args.rows*args.modelNumConv2d))(baseadjperm)
+        baseadjpermreshape = KK.layers.Lambda( lambda xx: KK.layers.Reshape((args.cols, args.rows*args.modelNumConv2d))(xx), name="baseadjpermrehape")(baseadjperm)
+
+        predBase0 = KK.layers.TimeDistributed( KK.layers.Dense(args.modelExtraLayerN, activation='relu'))(baseadjpermreshape)
         predBase = KK.layers.TimeDistributed( KK.layers.Dense(5, activation='softmax'))(predBase0)
 
         ################################

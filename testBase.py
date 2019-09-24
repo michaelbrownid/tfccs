@@ -34,7 +34,7 @@ def test(args):
         model = Model(args)
 
         # make it appear as though there is only one gpu and use it
-        os.environ["CUDA_VISIBLE_DEVICES"]="2"
+        os.environ["CUDA_VISIBLE_DEVICES"]=args.CUDA_VISIBLE_DEVICES
 
         num=0
         with tf.Session() as sess:

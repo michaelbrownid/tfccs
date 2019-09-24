@@ -18,6 +18,7 @@ def train(args):
     #with tf.device("/gpu:3"):
     if True:
         model = Model(args)
+        os.environ["CUDA_VISIBLE_DEVICES"]=args.CUDA_VISIBLE_DEVICES
 
         t0=time.time()
         data_loader = data.data( args.batch_size, sys.argv[2],
@@ -36,15 +37,15 @@ def train(args):
             t1=time.time()
             print("time data_loader test",str(t1-t0))
 
-        # check compatibility if training is continued from previously saved model
-        if args.init_from is not None:
-            # check if all necessary files exist
-            assert os.path.isdir(args.init_from)," %s must be a a path" % args.init_from
-            ckpt = tf.train.latest_checkpoint(args.init_from)
-            assert ckpt, "No checkpoint found"
+        # # check compatibility if training is continued from previously saved model
+        # if args.init_from is not None:
+        #     # check if all necessary files exist
+        #     assert os.path.isdir(args.init_from)," %s must be a a path" % args.init_from
+        #     ckpt = tf.train.latest_checkpoint(args.init_from)
+        #     assert ckpt, "No checkpoint found"
 
-        if not os.path.isdir(args.save_dir):
-            os.makedirs(args.save_dir)
+        # if not os.path.isdir(args.save_dir):
+        #     os.makedirs(args.save_dir)
             
         tfconfig=tf.ConfigProto()
         # tfconfig.allow_soft_placement=True
@@ -54,15 +55,14 @@ def train(args):
         with tf.Session( config=tfconfig ) as sess:
             sess.run(tf.global_variables_initializer())
 
-            saver = tf.train.Saver(tf.global_variables())
-
-            # restore model
-            if args.init_from is not None:
-                saver.restore(sess, ckpt)
+            # saver = tf.train.Saver(tf.global_variables())
+            # # restore model
+            # if args.init_from is not None:
+            #     saver.restore(sess, ckpt)
 
             print("# args.num_epochs", args.num_epochs, "args.batch_size", args.batch_size, "num_batches", data_loader.num_batches)
 
-            testLossAvgOLD = 999.9E+99
+            testLossAvgMIN = 999.9E+99
             for e in range(args.num_epochs):
                 storeloss = []
                 data_loader.reset_batch_pointer()
@@ -108,13 +108,16 @@ def train(args):
 
                 # if save_every or at tend then save and run validation test
                 if (e % args.save_every == 0) or (e == args.num_epochs-1):
-                    checkpoint_path = os.path.join(args.save_dir, 'model.ckpt')
-                    saver.save(sess, checkpoint_path, global_step=e * data_loader.num_batches + b)
+
+                    # checkpoint_path = os.path.join(args.save_dir, 'model.ckpt')
+                    # saver.save(sess, checkpoint_path, global_step=e * data_loader.num_batches + b)
+                    # print("model saved to {}".format(checkpoint_path))
+
                     # with open("my_model.json","w") as f:
                     #     f.write(model.model.to_json())
                     # model.model.save_weights("my_model.h5")
-                    model.model.save("my_model_FULL.h5")
-                    print("model saved to {}".format(checkpoint_path))
+                    model.model.save(args.modelsave)
+
 
                     # run the test set if there
                     if data_loader_test is not None:
@@ -144,10 +147,15 @@ def train(args):
                             testnum += xx[1]
                         testLossAvg = testsum/float(testnum)
                         print("epoch %d testLossAvg %f" % (e , testLossAvg))
-                        if testLossAvg > 1.0*testLossAvgOLD:
-                            print("EARLY STOPPING:",testLossAvg,testLossAvgOLD)
+                        if testLossAvg < testLossAvgMIN:
+                            testLossAvgMIN = testLossAvg
+                            cmd = "mv %s %s.%d.best" % (args.modelsave, args.modelsave, e)
+                            print(cmd)
+                            os.system(cmd)
+                        if testLossAvg > 1.05*testLossAvgMIN:
+                            print("EARLY STOPPING:",testLossAvg,testLossAvgMIN)
                             return()
-                        testLossAvgOLD = testLossAvg
+
                 #sys.exit(1)
 
 if __name__ == '__main__':

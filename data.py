@@ -21,7 +21,7 @@ def timeit( func, *args, **kwargs ):
 
 ################################
 def loadonefile( filename, myzfname=None ):
-    print("loadonefile",  filename, "from", myzfname)
+    print("loadonefile",  filename, "from", myzfname, file=sys.stderr)
     prefix = ""
     if myzfname is not None: 
         zf = zipfile.ZipFile(myzfname, mode='r') # parallel: can't pass zf without corruption so open here!

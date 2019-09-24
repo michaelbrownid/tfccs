@@ -19,8 +19,9 @@ class Model():
         inputs = KK.layers.Input(shape=(args.rows,args.cols,args.baseinfo))
 
         # call each position by base^Present, X^Missing. Could be 5 but using 16. Kernel=10-vector
-        baseadj = KK.layers.Conv2D(256, kernel_size= (21, 16), strides=(16,1),activation='relu', padding="same")(inputs)
-        baseadj2 = KK.backend.squeeze(baseadj,1) # [None, 1, 640, 16] -> [None, 640, 16]
+        baseadj = KK.layers.Conv2D(args.modelNumConv2d, kernel_size= (16, args.modelKernelCols), strides=(16,1),activation='relu', padding="same")(inputs)
+        #baseadj2 = KK.backend.squeeze(baseadj,1) # [None, 1, 640, 256] -> [None, 640, 256]
+        baseadj2 = KK.layers.Lambda( lambda xx: tf.squeeze( xx, 1), name="baseadj2")(baseadj)
 
         predBase = KK.layers.TimeDistributed( KK.layers.Dense(5, activation='softmax'))(baseadj2)
 
