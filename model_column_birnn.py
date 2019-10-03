@@ -18,24 +18,24 @@ class Model():
 
         inputs = KK.layers.Input(shape=(args.rows,args.cols,args.baseinfo))
 
-        # call each position by base^Present, X^Missing. Could be 5 but using 16. Kernel=10-vector
-        baseadj = KK.layers.Conv2D(256, kernel_size= (21, 16), strides=(16,1),activation='relu', padding="same")(inputs)
-        baseadj2 = KK.backend.squeeze(baseadj,1) # [None, 1, 640, 16] -> [None, 640, 16]
-        predBase = KK.layers.TimeDistributed( KK.layers.Dense(5, activation='softmax'))(baseadj2)
+        baseadj = KK.layers.Conv2D(128, kernel_size= (16, 1), strides=(16,1),activation='relu', padding="same")(inputs)
+        baseadj2 = KK.layers.Lambda( lambda xx: tf.squeeze( xx, 1), name="baseadj2")(baseadj) # [None, 1, 640, 128] -> [None, 640, 128]
 
-        #### now take predBase and run rnn to predict correct HP that
+        predBase = KK.layers.Dense(64, activation='softmax')(baseadj2)
+
+        #### now take predBase and run rnn to predict correct base that
         #### is labeled at every column of the input MSA
         
-        rnn_hidden_size= 256
+        rnn_hidden_size= 64
         bidi = KK.layers.Bidirectional( KK.layers.LSTM( rnn_hidden_size, return_sequences=True))(predBase)
-        rnn1 = KK.layers.LSTM( rnn_hidden_size, return_sequences=True)(bidi)
+        #rnn1 = KK.layers.LSTM( rnn_hidden_size, return_sequences=True)(bidi)
 
-        predictionsHPLEN = KK.layers.Dense(33, activation='softmax')(rnn1)
-        predictionsHPID = KK.layers.Dense(4, activation='softmax')(rnn1)
-
+        #predictionsHPLEN = KK.layers.Dense(33, activation='softmax')(rnn1)
+        #predictionsHPID = KK.layers.Dense(4, activation='softmax')(rnn1)
+        predictBase = KK.layers.Dense(5, activation='softmax')(bidi)
 
         ################################
-        self.model = KK.models.Model(inputs=inputs, outputs=[predictionsHPID,predictionsHPLEN])
+        self.model = KK.models.Model(inputs=inputs, outputs=[predictBase])
 
         #self.model.summary()
         print("================================")

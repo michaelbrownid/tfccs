@@ -8,8 +8,10 @@ import sys
 import tensorflow as tf
 import tensorflow.keras
 import numpy as np
-from .model import Model
+#from .model import Model
 from . import data
+import importlib
+import tensorflow.keras as KK
 
 ################################
 def train(args):
@@ -17,7 +19,12 @@ def train(args):
     #with tf.device("/cpu:0"):
     #with tf.device("/gpu:3"):
     if True:
+        # load the model based on name and access as Model: from .model import args.model
+        myimport = importlib.import_module("tfccs.%s" % args.model)
+        Model = myimport.Model
+
         model = Model(args)
+
         os.environ["CUDA_VISIBLE_DEVICES"]=args.CUDA_VISIBLE_DEVICES
 
         t0=time.time()
@@ -55,6 +62,10 @@ def train(args):
         with tf.Session( config=tfconfig ) as sess:
             sess.run(tf.global_variables_initializer())
 
+            if hasattr(args, "modelrestore"):
+                model.model = KK.models.load_model(args.modelrestore)
+                print("restored model", args.modelrestore)
+
             # saver = tf.train.Saver(tf.global_variables())
             # # restore model
             # if args.init_from is not None:
@@ -63,12 +74,20 @@ def train(args):
             print("# args.num_epochs", args.num_epochs, "args.batch_size", args.batch_size, "num_batches", data_loader.num_batches)
 
             testLossAvgMIN = 999.9E+99
+            first=True
             for e in range(args.num_epochs):
                 storeloss = []
                 data_loader.reset_batch_pointer()
                 for b in range(data_loader.num_batches):
                     start = time.time()
                     x, y = data_loader.next_batch()
+
+                    if first:
+                        first=False
+                        print("x.shape",x.shape)
+                        print("y.shape",y.shape)
+                        print("x[4]",x[4])
+                        print("y[4]",y[4])
 
                     # print("========")
                     # print("y.shape",y.shape)
@@ -149,10 +168,10 @@ def train(args):
                         print("epoch %d testLossAvg %f" % (e , testLossAvg))
                         if testLossAvg < testLossAvgMIN:
                             testLossAvgMIN = testLossAvg
-                            cmd = "mv %s %s.%d.best" % (args.modelsave, args.modelsave, e)
+                            cmd = "mv %s %s.best" % (args.modelsave, args.modelsave)
                             print(cmd)
                             os.system(cmd)
-                        if testLossAvg > 1.05*testLossAvgMIN:
+                        if testLossAvg > 2.0*testLossAvgMIN:
                             print("EARLY STOPPING:",testLossAvg,testLossAvgMIN)
                             return()
 

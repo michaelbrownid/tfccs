@@ -1,1 +1,0 @@
-/home/UNIXHOME/mbrown/mbrown/workspace2019Q2/ccs-ml-model/tfccs/model_column_birnn.py
