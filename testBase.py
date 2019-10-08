@@ -8,8 +8,9 @@ import sys
 import numpy as np
 import tensorflow as tf
 import tensorflow.keras as KK
-from .model import Model
+#from .model import Model
 from . import data
+import importlib
 
 ################################
 def test(args):
@@ -30,6 +31,11 @@ def test(args):
         #     print("ckpt", ckpt, file=sys.stderr)
         # if not os.path.isdir(args.save_dir):
         #     os.makedirs(args.save_dir)
+
+        # load the model based on name and access as Model: from .model import args.model
+
+        myimport = importlib.import_module("tfccs.%s" % args.model)
+        Model = myimport.Model
 
         model = Model(args)
 
