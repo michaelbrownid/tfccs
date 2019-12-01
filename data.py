@@ -119,11 +119,29 @@ class data:
             # provide both windowinput and windowinputKmer
             inputs = [ self.dat["windowinput"][mystart:myend,],
                        self.dat["windowinputKmer"][mystart:myend,] ]
+        elif self.inputdatName=="windowinputPlusCallProp":
+            calltruedat = np.expand_dims(self.dat["windowHPCallTrue"][mystart:myend,],axis= -1)
+            callpropdat = np.expand_dims(self.dat["windowHPCallProp"][mystart:myend,],axis= -1)
+            inputs = [ self.dat["windowinput"][mystart:myend,],
+                       callpropdat,
+                       calltruedat ]
         else:
             fullinputdat = self.dat[self.inputdatName]
             inputs = fullinputdat[mystart:myend,]
 
-        if "HP" in self.outputdatName:
+        if "windowoutputDirectHPPlusCallTrue" in self.outputdatName:
+            calltruedat = np.expand_dims(self.dat["windowHPCallTrue"][mystart:myend,],axis= -1)
+            # make p=0/1 into binary p,(1-p)
+            calltruedatbinary = np.concatenate((calltruedat, 1.0-calltruedat), axis= -1)
+            #hackshape = calltruedat.shape
+            #hackshape = (hackshape[0],hackshape[1],128)
+            #np.zeros( hackshape ), # for RNN output, zero_loss (keras doesn't have optional in/out!)
+            outputs = [ 
+                        self.dat["windowoutputDirectHP"][mystart:myend,:,0:4],
+                        self.dat["windowoutputDirectHP"][mystart:myend,:,4:],
+                        calltruedatbinary,
+                        np.zeros_like(calltruedat) ] # hack, zeros for batchsize, zero_loss (keras doesn't have optional in/out!)
+        elif "HP" in self.outputdatName:
             # provide both HP identity and length
             outputs = [ self.dat[self.outputdatName][mystart:myend,:,0:4],
                         self.dat[self.outputdatName][mystart:myend,:,4:] ]

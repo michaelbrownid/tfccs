@@ -66,11 +66,6 @@ def train(args):
                 model.model = KK.models.load_model(args.modelrestore)
                 print("restored model", args.modelrestore)
 
-            # saver = tf.train.Saver(tf.global_variables())
-            # # restore model
-            # if args.init_from is not None:
-            #     saver.restore(sess, ckpt)
-
             print("# args.num_epochs", args.num_epochs, "args.batch_size", args.batch_size, "num_batches", data_loader.num_batches)
 
             testLossAvgMIN = 999.9E+99
@@ -84,11 +79,15 @@ def train(args):
 
                     if first:
                         first=False
-                        print("x.shape",x.shape)
-                        print("y.shape",y.shape)
-                        print("x[4]",x[4])
-                        print("y[4]",y[4])
-
+                        # print("x.shape",x.shape)
+                        # print("y.shape",y.shape)
+                        # print("x[4]",x[4])
+                        # print("y[4]",y[4])
+                        for ii in range(len(x)):
+                            print("ii",ii,"x[ii].shape",x[ii].shape)
+                        for ii in range(len(y)):
+                            print("ii",ii,"y[ii].shape",y[ii].shape)
+                            
                     # print("========")
                     # print("y.shape",y.shape)
                     # print("y[0,0]",y[0,0])
@@ -104,7 +103,7 @@ def train(args):
                     end = time.time()
                     #print("epoch %d batch %d time %f" % (e, b, end-start))
                     for (kk,vv) in zip(model.model.metrics_names,[myfit]):
-                          #print("epoch",e,"batch",b,"trainMetric",kk,"=",vv,"batchsize",x.shape[0])
+                          print("epoch",e,"batch",b,"trainMetric",kk," ".join([str(xx) for xx in vv]))
                           if kk=="loss":
                               if not isinstance(vv,list): vv = [vv] # only single loss
                               # handle multiple inputs
@@ -132,11 +131,11 @@ def train(args):
                     # saver.save(sess, checkpoint_path, global_step=e * data_loader.num_batches + b)
                     # print("model saved to {}".format(checkpoint_path))
 
-                    # with open("my_model.json","w") as f:
-                    #     f.write(model.model.to_json())
-                    # model.model.save_weights("my_model.h5")
+                    with open("%s.model.json" % args.modelsave,"w") as f:
+                        f.write(model.model.to_json())
+                    model.model.save_weights("%s.model.h5" % args.modelsave)
+                    # again all together
                     model.model.save(args.modelsave)
-
 
                     # run the test set if there
                     if data_loader_test is not None:
@@ -169,6 +168,12 @@ def train(args):
                         if testLossAvg < testLossAvgMIN:
                             testLossAvgMIN = testLossAvg
                             cmd = "mv %s %s.best" % (args.modelsave, args.modelsave)
+                            print(cmd)
+                            os.system(cmd)
+                            cmd = "mv %s.model.json %s.model.json.best" % (args.modelsave, args.modelsave)
+                            print(cmd)
+                            os.system(cmd)
+                            cmd = "mv %s.model.h5 %s.model.h5.best" % (args.modelsave, args.modelsave)
                             print(cmd)
                             os.system(cmd)
                         if testLossAvg > 2.0*testLossAvgMIN:
