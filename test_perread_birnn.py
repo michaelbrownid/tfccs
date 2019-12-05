@@ -59,86 +59,39 @@ def test(args):
 
                 predictions = model.model.predict(x)
 
-                if first:
-                    first=False
-                    for ii in range(len(predictions)):
-                        print("ii",ii,"predictions[ii].shape",predictions[ii].shape)
-
                 ######## Dump the predictions and truth
                 """ output - predHPBase, predHPlen, predHPCall in test.dump.predictions.<model>.dat
                            - truth sets                        in test.dump.truth.<model>.dat
                 """
-                doDumpPred = True
-                if doDumpPred:
-                    headerDone = False
-                    headerCols = ["hpbase","hplen","hpcall","inputscalltrue"]
-                    fppred = open("test.dump.predictions.%s.dat" % args.modelsave,"w")
-                    fptruth = open("test.dump.truth.%s.dat" % args.modelsave,"w")
-                    for obj in [0,256,512,768]:
-                        for column in range(predictions[0].shape[1]):
-                            datapred = []
-                            datatruth = []
-                            header = ["obj","column"]
-                            for predii in range(0,3):
-                                for datii in range(predictions[predii].shape[2]):
-                                    datapred.append(predictions[predii][obj][column][datii])
-                                    datatruth.append(y[predii][obj][column][datii])
-                                    if not headerDone:
-                                        header.append("%s-%d" % (headerCols[predii],datii))
+                headerDone = False
+                headerCols = ["hpbase","hplen","hpcall","inputscalltrue"]
+                fppred = open("test.dump.predictions.%s.dat" % args.modelsave,"w")
+                fptruth = open("test.dump.truth.%s.dat" % args.modelsave,"w")
+                for obj in range(predictions[0].shape[0]): # [0,256,512,768]:
+                    for column in range(predictions[0].shape[1]):
+                        datapred = []
+                        datatruth = []
+                        header = ["obj","column"]
+                        for predii in range(0,3):
+                            for datii in range(predictions[predii].shape[2]):
+                                datapred.append(predictions[predii][obj][column][datii])
+                                datatruth.append(y[predii][obj][column][datii])
+                                if not headerDone:
+                                    header.append("%s-%d" % (headerCols[predii],datii))
 
-                            if not headerDone:
-                                fppred.write("%s\n" % "\t".join(header))
-                                fptruth.write("%s\n" % "\t".join(header))
-                                headerDone=True
+                        if not headerDone:
+                            fppred.write("%s\n" % "\t".join(header))
+                            fptruth.write("%s\n" % "\t".join(header))
+                            headerDone=True
 
-                            fppred.write("%d\t%d\t%s" % (obj,column,"\t".join([str(xx) for xx in datapred]))+"\n")
-                            fptruth.write("%d\t%d\t%s" % (obj,column,"\t".join([str(xx) for xx in datatruth]))+"\n")
+                        fppred.write("%d\t%d\t%s" % (obj,column,"\t".join([str(xx) for xx in datapred]))+"\n")
+                        fptruth.write("%d\t%d\t%s" % (obj,column,"\t".join([str(xx) for xx in datatruth]))+"\n")
 
-                    fppred.close()
-                    fptruth.close()
-                    sys.exit(1)
+                fppred.close()
+                fptruth.close()
 
-                ################################
-                # take max for error rate and consensus call
-                if False:
-                    idx2Base = ["A","C","G","T",""]
-                    consensusSeq = []
-                    trueSeq = []
-                    for obj in range(y.shape[0]):
-                        consensusSeq.append( [] )
-                        trueSeq.append( [] )
-                        for objelement in range(y.shape[1]):
-                            truth = y[obj,objelement]
-                            estimate = predictions[obj,objelement]
-                            truemax = np.argmax(truth)
-                            estmax = np.argmax(estimate)
-                            consensusSeq[obj].append(idx2Base[estmax])
-                            trueSeq[obj].append(idx2Base[truemax])
-                            # # estsort = np.sort(-estimate,1)
+                break # only look at 0th batch for time
 
-                            if truemax!=estmax:
-                                numerr+=1
-                                print("err objnum %d obj %d objelement %d true est prob" % (objnum, obj, objelement), truemax,estmax,estimate[estmax])
-                            total+=1
-                        objnum+=1 # for obj
-                    print("BATCH %d 1 %f = %d / %d" % (b,float(numerr)/total,numerr,total))
-
-                    #### evaluate full seqs
-                    fptrue = open("seqtrue.fa","a")
-                    fpest = open("seqest.fa","a")
-                    for obj in range(len(trueSeq)):
-                        fptrue.write(">true-%d-%d\n" % (b,obj))
-                        fptrue.write("".join(trueSeq[obj]))
-                        fptrue.write("\n")
-
-                        fpest.write(">est-%d-%d\n" % (b,obj))
-                        fpest.write("".join(consensusSeq[obj]))
-                        fpest.write("\n")
-                    fptrue.close()
-                    fpest.close()
-                            
-                #break # only look at 0th batch for time
-            print("error rate 1 %f = %d / %d" % (float(numerr)/total,numerr,total))
 
 if __name__ == '__main__':
     exec(open(sys.argv[1]).read())

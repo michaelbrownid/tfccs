@@ -73,6 +73,7 @@ and make a consensus call.
         #### forwardsense RNN (?, 640, rnn_hidden_size)
         rnn_hidden_size= 256 # 256 does not seem to help
 
+        #### try GRU->LSTM or SimpleRNN
         # 1st RNN layer
         forwardNotBack0 = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=False, name="forwardNotBack0")(readdatmerge) # [None, 640, 64]
         forwardYesBack0 = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=True, name="forwardYesBack0")(readdatmerge) # [None, 640, 64]
@@ -135,8 +136,9 @@ and make a consensus call.
 
         #### compute loss only where true call is made exponential weighting for hplen
         def loss_EXP_sparse_kl_closure( callTrue,baseint ):
-            # compute exponential weights over 33 possibilities
-            expweights = np.power(2.0, range(0,33))
+            # compute exponential weights over 33 possibilities, kmers drop off exponentially
+            #expweights = np.power(2.0, range(0,33))
+            expweights = np.array( [1.0]*33, dtype=np.float32)
 
             def sparse_kl(y_pred,y_true):
                 eps = 1.0E-9 # 0.0 or too small causes NAN loss!
@@ -167,6 +169,8 @@ and make a consensus call.
         # predHPCall: kl everywhere. Must get call right everywhere
         # inputsCallTrue: no loss, hack to get model save
 
+        # "kullback_leibler_divergence", myloss, mylossEXP
+        # loss_weights=[0.0,1.0,0.0,0.0])
         self.model.compile(optimizer=myopt, 
-                           loss=[myloss,mylossEXP,"kullback_leibler_divergence",zero_loss],
-                           loss_weights=[0.0,1.0,0.0,0.0])
+                           loss=["categorical_crossentropy","categorical_crossentropy","categorical_crossentropy",zero_loss])
+                           
