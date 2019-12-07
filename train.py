@@ -19,13 +19,19 @@ def train(args):
     #with tf.device("/cpu:0"):
     #with tf.device("/gpu:3"):
     if True:
+        os.environ["CUDA_VISIBLE_DEVICES"]=args.CUDA_VISIBLE_DEVICES
+
         # load the model based on name and access as Model: from .model import args.model
         myimport = importlib.import_module("tfccs.%s" % args.model)
         Model = myimport.Model
 
         model = Model(args)
 
-        os.environ["CUDA_VISIBLE_DEVICES"]=args.CUDA_VISIBLE_DEVICES
+        #model.model.save(args.modelsave)
+        # TypeError: ('Not JSON Serializable:', <function fubarClosure.<locals>.func at 0x7fd4c6109c80>)
+        #with open("%s.model.json" % args.modelsave,"w") as f:
+        #    f.write(model.model.to_json())
+        #model.model.save_weights("%s.model.h5" % args.modelsave)
 
         t0=time.time()
         data_loader = data.data( args.batch_size, sys.argv[2],
@@ -77,6 +83,13 @@ def train(args):
                     start = time.time()
                     x, y = data_loader.next_batch()
 
+                    # train only on readNumber=1 for now. can cycle through them all.
+                    # must be on output as hack to get keras to write model!
+                    readNumber = args.readNumber
+                    readNumberArray = np.full( (x[0].shape[0],1), readNumber, dtype=np.float32)
+                    x.append(readNumberArray)
+                    y.append(readNumberArray)
+
                     if first:
                         first=False
                         # print("x.shape",x.shape)
@@ -98,6 +111,7 @@ def train(args):
                     #         print("meanStdArgmax",oo,cc,np.mean(predictions[oo,cc]),np.std(predictions[oo,cc]),np.argmax(predictions[oo,cc]), np.max(predictions[oo,cc]), y[oo,cc], predictions[oo,cc,y[oo,cc]])
 
                     #myfit=model.model.fit( x, [yid,ylen], epochs=1, batch_size=1,verbose=2)
+
                     myfit = model.model.train_on_batch( x, y )
 
                     end = time.time()
@@ -131,11 +145,11 @@ def train(args):
                     # saver.save(sess, checkpoint_path, global_step=e * data_loader.num_batches + b)
                     # print("model saved to {}".format(checkpoint_path))
 
-                    with open("%s.model.json" % args.modelsave,"w") as f:
-                        f.write(model.model.to_json())
-                    model.model.save_weights("%s.model.h5" % args.modelsave)
-                    # again all together
                     model.model.save(args.modelsave)
+                    # TypeError: ('Not JSON Serializable:', <function fubarClosure.<locals>.func at 0x7fd4c6109c80>)
+                    #with open("%s.model.json" % args.modelsave,"w") as f:
+                    #    f.write(model.model.to_json())
+                    #model.model.save_weights("%s.model.h5" % args.modelsave)
 
                     # run the test set if there
                     if data_loader_test is not None:
@@ -143,6 +157,14 @@ def train(args):
                         data_loader_test.reset_batch_pointer()
                         for b in range(data_loader_test.num_batches):
                             x, y = data_loader_test.next_batch()
+
+                            # train only on readNumber=1 for now. can cycle through them all.
+                            # must be on output as hack to get keras to write model!
+                            readNumber = args.readNumber
+                            readNumberArray = np.full( (x[0].shape[0],1), readNumber, dtype=np.float32)
+                            x.append(readNumberArray)
+                            y.append(readNumberArray)
+
                             #mytest=model.model.evaluate( x, [yid,ylen],verbose=0)
                             mytest = model.model.test_on_batch( x, y )
 

@@ -19,15 +19,13 @@ def test(args):
                              outputdatName=args.outputdatName)
 
     if True:
+        # make it appear as though there is only one gpu and use it
+        os.environ["CUDA_VISIBLE_DEVICES"]=args.CUDA_VISIBLE_DEVICES
 
         # load the model based on name and access as Model: from .model import args.model
         myimport = importlib.import_module("tfccs.%s" % args.model)
         Model = myimport.Model
-
         model = Model(args)
-
-        # make it appear as though there is only one gpu and use it
-        os.environ["CUDA_VISIBLE_DEVICES"]=args.CUDA_VISIBLE_DEVICES
 
         objnum=0
         with tf.Session() as sess:

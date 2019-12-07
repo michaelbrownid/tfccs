@@ -4,6 +4,12 @@ import sys
 import numpy as np
 from . import struct
 
+def fubarClosure(fubarIndex):
+    def func( xx ):
+        return( xx[:, fubarIndex ,:,:] )
+    return(func)
+
+
 class Model():
     """ Per read model:
 
@@ -48,24 +54,36 @@ have issues at ends of reads).
 and make a consensus call.
 
     """
+    #readdat = KK.layers.Lambda( lambda xx: xx[:,1,:,:],name="readdat")(merged) # [None, 640, 12]
+    # np.choose???
+    #readdat = KK.layers.Lambda( lambda xx: np.take(xx, 1, axis=1 ), name="readdat")(merged) # [None, 640, 12] )
+    #fubarIndex = tf.cast(tf.reduce_mean(readNumber),dtype=tf.int32) # tf.reduce_mean(readNumber).shape=()
 
     def __init__(self, args):
 
         self.args = args
 
         inputs = KK.layers.Input(shape=(args.rows,args.cols,args.baseinfo), name="inputs") # [None, 16, 640, 4]
+
         inputsCallProp = KK.layers.Input(shape=(args.cols,1), name="inputsCallProp") # [None, 640, 1]
+
         inputsCallTrue = KK.layers.Input(shape=(args.cols,1), name="inputsCallTrue") # [None, 640, 1]
         inputsCallTrueHack = KK.layers.Lambda( lambda x: x)(inputsCallTrue) # fixes error cannot be fed and fetched
+
+        readNumber = KK.layers.Input(shape=(1,), name="readNumber") #TODO is this the only way to feed parameter?
 
         #### take the baseint and embed for all
         baseint = KK.layers.Lambda( lambda xx: xx[:,:,:,0], name="baseint" )(inputs) # [None, 16, 640]
         embed = KK.layers.Embedding(input_dim=1, output_dim=8, name="embed")(baseint) # [None, 16, 640, 8]
         merged     = KK.layers.Concatenate(axis= -1,name="merged")([inputs,embed]) # [None, 16, 640, 12] 12=4+8
 
-        #### one forward read. TODO: compute for all; different loss functions for each read!
-        readNumber = 1
-        readdat = KK.layers.Lambda( lambda xx: xx[:,readNumber,:,:],name="readdat")(merged) # [None, 640, 12]
+        #### one forward read. TODO: compute for all; different loss functions for each read if base!=0 used in loss!
+        fubarIndex1 = KK.layers.Lambda( lambda xx: KK.backend.mean(xx))(readNumber) # tf.reduce_mean
+        fubarIndex2 = KK.layers.Lambda( lambda xx: KK.backend.cast(xx,dtype=tf.int32))(fubarIndex1)
+        fu = fubarClosure( fubarIndex2 )
+
+        #readdat = KK.layers.Lambda( lambda xx: xx[:, fubarIndex2 ,:,:],name="readdat")(merged) # [None, 640, 12]
+        readdat = KK.layers.Lambda( lambda xx: fu(xx), name="readdat")(merged)
 
         #### merge inputsCallProp
         readdatmerge = KK.layers.Concatenate(axis= -1,name="readdatmerge")([readdat, inputsCallProp]) # [None, 640, 13]
@@ -90,8 +108,8 @@ and make a consensus call.
         predHPCall =  KK.layers.Dense(2, activation='softmax',name="predHPCall")(rnnconcat) # [None, 640, 2]
 
         ################################
-        self.model = KK.models.Model(inputs=[inputs,inputsCallProp,inputsCallTrue],
-                                     outputs=[predHPBase,predHPLen,predHPCall,inputsCallTrueHack]) 
+        self.model = KK.models.Model(inputs=[inputs,inputsCallProp,inputsCallTrue,readNumber],
+                                     outputs=[predHPBase,predHPLen,predHPCall,inputsCallTrueHack,readNumber]) 
         
         # hack: inputsCallTrue passed back out for model saving
         # This is what happens if you bring in input that is not used:
@@ -161,7 +179,8 @@ and make a consensus call.
         def zero_loss(y_true, y_pred):
             # print("zero_loss y_pred.shape", y_pred.shape)
             # print("zero_loss y_true.shape", y_true.shape)
-            return(KK.backend.zeros_like(y_pred))
+            #return(KK.backend.zeros_like(y_pred))
+            return(KK.backend.zeros_like(y_true))
 
         #### different losses:
         # predHPBase: kl only at calltrue==1. don't penalize outside real calls
@@ -172,5 +191,5 @@ and make a consensus call.
         # "kullback_leibler_divergence", myloss, mylossEXP
         # loss_weights=[0.0,1.0,0.0,0.0])
         self.model.compile(optimizer=myopt, 
-                           loss=["categorical_crossentropy","categorical_crossentropy","categorical_crossentropy",zero_loss])
+                           loss=["categorical_crossentropy","categorical_crossentropy","categorical_crossentropy",zero_loss,zero_loss])
                            
