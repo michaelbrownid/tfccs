@@ -47,6 +47,13 @@ def test(args):
                 start = time.time()
                 x, y = data_loader.next_batch()
 
+                # train only on readNumber=1 for now. can cycle through them all.
+                # must be on output as hack to get keras to write model!
+                readNumber = args.readNumber
+                readNumberArray = np.full( (x[0].shape[0],1), readNumber, dtype=np.float32)
+                x.append(readNumberArray)
+                y.append(readNumberArray)
+
                 # self.model = KK.models.Model(inputs=[inputs,inputsCallProp,inputsCallTrue],
                 #                              outputs=[rnnconcat,predHPBase,predHPLen,predHPCall,inputsCallTrue])
                 # remove rnnconcat from first output # ii 0 predictions[ii].shape (1000, 640, 128)
@@ -65,7 +72,7 @@ def test(args):
                 headerCols = ["hpbase","hplen","hpcall","inputscalltrue"]
                 fppred = open("test.dump.predictions.%s.dat" % args.modelsave,"w")
                 fptruth = open("test.dump.truth.%s.dat" % args.modelsave,"w")
-                for obj in range(predictions[0].shape[0]): # [0,256,512,768]:
+                for obj in [0,38,50]: # range(predictions[0].shape[0]):
                     for column in range(predictions[0].shape[1]):
                         datapred = []
                         datatruth = []

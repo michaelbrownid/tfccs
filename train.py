@@ -27,11 +27,10 @@ def train(args):
 
         model = Model(args)
 
-        #model.model.save(args.modelsave)
-        # TypeError: ('Not JSON Serializable:', <function fubarClosure.<locals>.func at 0x7fd4c6109c80>)
-        #with open("%s.model.json" % args.modelsave,"w") as f:
-        #    f.write(model.model.to_json())
-        #model.model.save_weights("%s.model.h5" % args.modelsave)
+        model.model.save(args.modelsave)
+        with open("%s.model.json" % args.modelsave,"w") as f:
+            f.write(model.model.to_json())
+        model.model.save_weights("%s.model.h5" % args.modelsave)
 
         t0=time.time()
         data_loader = data.data( args.batch_size, sys.argv[2],
@@ -50,20 +49,7 @@ def train(args):
             t1=time.time()
             print("time data_loader test",str(t1-t0))
 
-        # # check compatibility if training is continued from previously saved model
-        # if args.init_from is not None:
-        #     # check if all necessary files exist
-        #     assert os.path.isdir(args.init_from)," %s must be a a path" % args.init_from
-        #     ckpt = tf.train.latest_checkpoint(args.init_from)
-        #     assert ckpt, "No checkpoint found"
-
-        # if not os.path.isdir(args.save_dir):
-        #     os.makedirs(args.save_dir)
-            
         tfconfig=tf.ConfigProto()
-        # tfconfig.allow_soft_placement=True
-        # tfconfig.log_device_placement=True
-        # tfconfig.gpu_options.allow_growth=True
 
         with tf.Session( config=tfconfig ) as sess:
             sess.run(tf.global_variables_initializer())
@@ -101,15 +87,6 @@ def train(args):
                         for ii in range(len(y)):
                             print("ii",ii,"y[ii].shape",y[ii].shape)
                             
-                    # print("========")
-                    # print("y.shape",y.shape)
-                    # print("y[0,0]",y[0,0])
-                    # predictions = model.model.predict(x[0:2,])
-                    # print("predictions.shape",predictions.shape)
-                    # for oo in range(predictions.shape[0]):
-                    #     for cc in range(predictions.shape[1]):
-                    #         print("meanStdArgmax",oo,cc,np.mean(predictions[oo,cc]),np.std(predictions[oo,cc]),np.argmax(predictions[oo,cc]), np.max(predictions[oo,cc]), y[oo,cc], predictions[oo,cc,y[oo,cc]])
-
                     #myfit=model.model.fit( x, [yid,ylen], epochs=1, batch_size=1,verbose=2)
 
                     myfit = model.model.train_on_batch( x, y )
@@ -141,15 +118,10 @@ def train(args):
                 # if save_every or at tend then save and run validation test
                 if (e % args.save_every == 0) or (e == args.num_epochs-1):
 
-                    # checkpoint_path = os.path.join(args.save_dir, 'model.ckpt')
-                    # saver.save(sess, checkpoint_path, global_step=e * data_loader.num_batches + b)
-                    # print("model saved to {}".format(checkpoint_path))
-
                     model.model.save(args.modelsave)
-                    # TypeError: ('Not JSON Serializable:', <function fubarClosure.<locals>.func at 0x7fd4c6109c80>)
-                    #with open("%s.model.json" % args.modelsave,"w") as f:
-                    #    f.write(model.model.to_json())
-                    #model.model.save_weights("%s.model.h5" % args.modelsave)
+                    with open("%s.model.json" % args.modelsave,"w") as f:
+                        f.write(model.model.to_json())
+                    model.model.save_weights("%s.model.h5" % args.modelsave)
 
                     # run the test set if there
                     if data_loader_test is not None:

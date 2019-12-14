@@ -4,6 +4,7 @@ import sys
 import numpy as np
 from . import struct
 
+# TypeError: ('Not JSON Serializable:', <function fubarClosure.<locals>.func at 0x7fd4c6109c80>)
 def fubarClosure(fubarIndex):
     def func( xx ):
         return( xx[:, fubarIndex ,:,:] )
@@ -71,6 +72,7 @@ and make a consensus call.
         inputsCallTrueHack = KK.layers.Lambda( lambda x: x)(inputsCallTrue) # fixes error cannot be fed and fetched
 
         readNumber = KK.layers.Input(shape=(1,), name="readNumber") #TODO is this the only way to feed parameter?
+        readNumberHack = KK.layers.Lambda( lambda x: x)(readNumber) # fixes error cannot be fed and fetched
 
         #### take the baseint and embed for all
         baseint = KK.layers.Lambda( lambda xx: xx[:,:,:,0], name="baseint" )(inputs) # [None, 16, 640]
@@ -80,10 +82,11 @@ and make a consensus call.
         #### one forward read. TODO: compute for all; different loss functions for each read if base!=0 used in loss!
         fubarIndex1 = KK.layers.Lambda( lambda xx: KK.backend.mean(xx))(readNumber) # tf.reduce_mean
         fubarIndex2 = KK.layers.Lambda( lambda xx: KK.backend.cast(xx,dtype=tf.int32))(fubarIndex1)
-        fu = fubarClosure( fubarIndex2 )
+        #fu = fubarClosure( fubarIndex2 )
 
         #readdat = KK.layers.Lambda( lambda xx: xx[:, fubarIndex2 ,:,:],name="readdat")(merged) # [None, 640, 12]
-        readdat = KK.layers.Lambda( lambda xx: fu(xx), name="readdat")(merged)
+        #readdat = KK.layers.Lambda( lambda xx: fu(xx), name="readdat")(merged)
+        readdat = KK.layers.Lambda( lambda xx: xx[0][:, xx[1] ,:,:], name="readdat")( (merged,fubarIndex2) )
 
         #### merge inputsCallProp
         readdatmerge = KK.layers.Concatenate(axis= -1,name="readdatmerge")([readdat, inputsCallProp]) # [None, 640, 13]
@@ -109,7 +112,7 @@ and make a consensus call.
 
         ################################
         self.model = KK.models.Model(inputs=[inputs,inputsCallProp,inputsCallTrue,readNumber],
-                                     outputs=[predHPBase,predHPLen,predHPCall,inputsCallTrueHack,readNumber]) 
+                                     outputs=[predHPBase,predHPLen,predHPCall,inputsCallTrueHack,readNumberHack]) 
         
         # hack: inputsCallTrue passed back out for model saving
         # This is what happens if you bring in input that is not used:
