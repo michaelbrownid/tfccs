@@ -111,7 +111,11 @@ class data:
     def reset_batch_pointer(self):
         self.pointer = 0
 
+    def set_batch_pointer(self, batch):
+        self.pointer = batch
+
     def next_batch(self):
+        # TODO: compute begin/end to get it right at last batch
         mystart = self.pointer * self.batch_size
         myend = (self.pointer+1) * self.batch_size
 
