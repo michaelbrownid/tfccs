@@ -106,13 +106,12 @@ and make a consensus call.
         rnnconcat = KK.layers.Concatenate(axis= -1,name="rnnconcat")([forwardNotBack, forwardYesBack]) # [None, 640, 128]
 
         #### make predications on HP base, len, call
-        predHPBase = KK.layers.Dense(4, activation='softmax',name="predHPBase")(rnnconcat) #  [None, 640, 4]
-        predHPLen  =  KK.layers.Dense(33, activation='softmax',name="predHPLen")(rnnconcat) # [None, 640, 33]
+        predHP = KK.layers.Dense(133, activation='softmax',name="predHPBase")(rnnconcat) #  [None, 640, 133] windowAlignment.py 0:132
         predHPCall =  KK.layers.Dense(2, activation='softmax',name="predHPCall")(rnnconcat) # [None, 640, 2]
 
         ################################
         self.model = KK.models.Model(inputs=[inputs,inputsCallProp,inputsCallTrue,readNumber],
-                                     outputs=[predHPBase,predHPLen,predHPCall,inputsCallTrueHack,readNumberHack]) 
+                                     outputs=[predHP,predHPCall,inputsCallTrueHack,readNumberHack]) 
         
         # hack: inputsCallTrue passed back out for model saving
         # This is what happens if you bring in input that is not used:
@@ -153,7 +152,7 @@ and make a consensus call.
                 print("*sparsekl.shape",sparsekl.shape)
                 return(sparsekl)
             return(sparse_kl)
-        myloss = loss_sparse_kl_closure(inputsCallTrue,readdat)
+        #myloss = loss_sparse_kl_closure(inputsCallTrue,readdat)
 
         #### compute loss only where true call is made exponential weighting for hplen
         def loss_EXP_sparse_kl_closure( callTrue,baseint ):
@@ -177,7 +176,7 @@ and make a consensus call.
                 print("**sparsekl.shape",sparsekl.shape)
                 return(sparsekl)
             return(sparse_kl)
-        mylossEXP = loss_EXP_sparse_kl_closure(inputsCallTrue,readdat)
+        #mylossEXP = loss_EXP_sparse_kl_closure(inputsCallTrue,readdat)
 
         def zero_loss(y_true, y_pred):
             # print("zero_loss y_pred.shape", y_pred.shape)
@@ -194,5 +193,5 @@ and make a consensus call.
         # "kullback_leibler_divergence", myloss, mylossEXP
         # loss_weights=[0.0,1.0,0.0,0.0])
         self.model.compile(optimizer=myopt, 
-                           loss=["categorical_crossentropy","categorical_crossentropy","categorical_crossentropy",zero_loss,zero_loss])
+                           loss=["sparse_categorical_crossentropy","categorical_crossentropy",zero_loss,zero_loss])
                            

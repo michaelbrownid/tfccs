@@ -15,13 +15,11 @@ EXEC:args.saveFile=\'test.combine.perread.birnn.readnumber.1.npz\'
 
 
 I want to dump for the i'th batch ( batch=1000, column=640, readNum=16):
-predbase: (batch, readNum, column, 4)
-predlen : (batch, readNum, column,33)
+predhp: (batch, readNum, column, 133)
 predcall: (batch, readNum, column, 2)
 
 In a separate file is corresponding truth :
-truebase: (batch, column, 4)
-truelen : (batch, column,33)
+truehp: (batch, column, 4)
 truecall: (batch, column, 2)
 """
 
@@ -72,7 +70,7 @@ def test(args):
                     # special dump only truth
                     data_loader.set_batch_pointer(0)
                     x, y = data_loader.next_batch()
-                    np.savez_compressed(args.saveFile, truebase=y[0], truelen=y[1], truecall=y[2])
+                    np.savez_compressed(args.saveFile, truehp=y[0], truecall=y[1])
                     return()
 
                 data_loader.set_batch_pointer( b )
@@ -83,10 +81,9 @@ def test(args):
                 y.append(None)
 
                 # set up space for all objects and readNumbers
-                outPredbase = np.zeros( (args.batch_size, args.rows, args.cols, 4), dtype=np.float32)
-                outPredlen  = np.zeros( (args.batch_size, args.rows, args.cols, args.hpdist), dtype=np.float32)
+                outPredhp = np.zeros( (args.batch_size, args.rows, args.cols, 133), dtype=np.float32)
                 outPredcall = np.zeros( (args.batch_size, args.rows, args.cols, 2), dtype=np.float32)
-                outInBaseint = np.zeros( (args.batch_size, args.rows, args.cols, 1), dtype=np.float32) # the input base. 0=empty
+                outInBaseint = np.zeros( (args.batch_size, args.rows, args.cols), dtype=np.float32) # the input base. 0=empty
 
                 for readNumber in range(args.rows):
                     print("readNumber:",readNumber)
@@ -98,21 +95,16 @@ def test(args):
                     predictions = model.model.predict(x)
                     for ii in range(len(predictions)):
                       print("ii %d predictions[ii].shape" %ii, predictions[ii].shape)
-                    # ii 0 predictions[ii].shape (1000, 640, 4)
-                    # ii 1 predictions[ii].shape (1000, 640, 33)
-                    # ii 2 predictions[ii].shape (1000, 640, 2)
-                    # ii 3 predictions[ii].shape (1000, 640, 1)
 
                     #### place predictions in correct places in output
                     for obj in range(predictions[0].shape[0]):
                         #for column in range(predictions[0].shape[1]):
-                            outPredbase[obj, readNumber,:,:] = predictions[0][obj,:,:]
-                            outPredlen[obj, readNumber,:,:] = predictions[1][obj,:,:]
+                            outPredhp[obj, readNumber,:,:] = predictions[0][obj,:,:]
                             outPredcall[obj, readNumber,:,:] = predictions[2][obj,:,:]
-                            outInBaseint[obj, readNumber,:,:] = x[0][obj,readNumber,:,0] # the input base obj
+                            outInBaseint[obj, readNumber,:] = x[0][obj,readNumber,:,0]
                             
             # Now I have all the data. Write it out
-            np.savez_compressed(args.saveFile, predbase=outPredbase, predlen=outPredlen, predcall=outPredcall)
+            np.savez_compressed(args.saveFile, predhp=outPredhp, predcall=outPredcall, inBasein=outInBaseint)
 
 if __name__ == '__main__':
     exec(open(sys.argv[1]).read())

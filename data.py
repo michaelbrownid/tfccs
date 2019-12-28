@@ -141,8 +141,7 @@ class data:
             #hackshape = (hackshape[0],hackshape[1],128)
             #np.zeros( hackshape ), # for RNN output, zero_loss (keras doesn't have optional in/out!)
             outputs = [ 
-                        self.dat["windowoutputDirectHP"][mystart:myend,:,0:4],
-                        self.dat["windowoutputDirectHP"][mystart:myend,:,4:],
+                        self.dat["windowoutputDirectHP"][mystart:myend,:],
                         calltruedatbinary,
                         np.zeros_like(calltruedat) ] # hack, zeros for batchsize, zero_loss (keras doesn't have optional in/out!)
         elif "HP" in self.outputdatName:
