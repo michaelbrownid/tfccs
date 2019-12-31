@@ -100,7 +100,7 @@ def test(args):
                     for obj in range(predictions[0].shape[0]):
                         #for column in range(predictions[0].shape[1]):
                             outPredhp[obj, readNumber,:,:] = predictions[0][obj,:,:]
-                            outPredcall[obj, readNumber,:,:] = predictions[2][obj,:,:]
+                            outPredcall[obj, readNumber,:,:] = predictions[1][obj,:,:]
                             outInBaseint[obj, readNumber,:] = x[0][obj,readNumber,:,0]
                             
             # Now I have all the data. Write it out

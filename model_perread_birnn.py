@@ -193,5 +193,5 @@ and make a consensus call.
         # "kullback_leibler_divergence", myloss, mylossEXP
         # loss_weights=[0.0,1.0,0.0,0.0])
         self.model.compile(optimizer=myopt, 
-                           loss=["sparse_categorical_crossentropy","categorical_crossentropy",zero_loss,zero_loss])
+                           loss=["sparse_categorical_crossentropy","sparse_categorical_crossentropy",zero_loss,zero_loss])
                            

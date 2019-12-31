@@ -135,14 +135,9 @@ class data:
 
         if "windowoutputDirectHPPlusCallTrue" in self.outputdatName:
             calltruedat = np.expand_dims(self.dat["windowHPCallTrue"][mystart:myend,],axis= -1)
-            # make p=0/1 into binary p,(1-p)
-            calltruedatbinary = np.concatenate((calltruedat, 1.0-calltruedat), axis= -1)
-            #hackshape = calltruedat.shape
-            #hackshape = (hackshape[0],hackshape[1],128)
-            #np.zeros( hackshape ), # for RNN output, zero_loss (keras doesn't have optional in/out!)
             outputs = [ 
                         self.dat["windowoutputDirectHP"][mystart:myend,:],
-                        calltruedatbinary,
+                        calltruedat,
                         np.zeros_like(calltruedat) ] # hack, zeros for batchsize, zero_loss (keras doesn't have optional in/out!)
         elif "HP" in self.outputdatName:
             # provide both HP identity and length
