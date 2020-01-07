@@ -124,11 +124,11 @@ class data:
             inputs = [ self.dat["windowinput"][mystart:myend,],
                        self.dat["windowinputKmer"][mystart:myend,] ]
         elif self.inputdatName=="windowinputPlusCallProp":
-            calltruedat = np.expand_dims(self.dat["windowHPCallTrue"][mystart:myend,],axis= -1)
             callpropdat = np.expand_dims(self.dat["windowHPCallProp"][mystart:myend,],axis= -1)
+            calltruedat = np.expand_dims(self.dat["windowHPCallTrue"][mystart:myend,],axis= -1)
             inputs = [ self.dat["windowinput"][mystart:myend,],
-                       callpropdat,
-                       calltruedat ]
+                       callpropdat.astype('int32'),
+                       calltruedat.astype('int32') ]
         else:
             fullinputdat = self.dat[self.inputdatName]
             inputs = fullinputdat[mystart:myend,]

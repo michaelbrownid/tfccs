@@ -60,7 +60,8 @@ def test(args):
             model.model = KK.models.load_model(args.modelsave, custom_objects={"KK":KK, 
                                                                                "zero_loss": nullloss,
                                                                                "myloss": nullloss,
-                                                                               "sparse_kl": nullloss})
+                                                                               "sparse_kl": nullloss,
+                                                                               "args": args })
             ################################
             for b in [ args.batch_number ]:
 
@@ -104,7 +105,7 @@ def test(args):
                             outInBaseint[obj, readNumber,:] = x[0][obj,readNumber,:,0]
                             
             # Now I have all the data. Write it out
-            np.savez_compressed(args.saveFile, predhp=outPredhp, predcall=outPredcall, inBasein=outInBaseint)
+            np.savez_compressed(args.saveFile, predhp=outPredhp, predcall=outPredcall, inBaseint=outInBaseint)
 
 if __name__ == '__main__':
     exec(open(sys.argv[1]).read())
