@@ -60,7 +60,7 @@ class Model():
         predHP = KK.layers.Dense(133, activation='softmax',name="predHP")(rnnconcat) #  [None, 640, 133] windowAlignment.py 0:132
         predHPCall =  KK.layers.Dense(2, activation='softmax',name="predHPCall")(rnnconcat) # [None, 640, 2]
 
-        if True:
+        if False:
             #### make uniform loss everywhere there is no base covering
             basecovered    = KK.layers.Lambda( lambda xx: KK.backend.expand_dims( KK.backend.cast( KK.backend.not_equal( xx[:,:,0], 0.0 ), dtype=tf.float32), axis=-1 ), name="basecovered")(   readdat)
             notbasecovered = KK.layers.Lambda( lambda xx: 1.0-xx, name="notbasecovered")(basecovered)
@@ -103,7 +103,7 @@ class Model():
         #myopt = KK.optimizers.SGD()
         myopt = KK.optimizers.Adam()
 
-        #### TODO: OLD work has y_pred and y_true SWITCHED!!!!!
+        #### TODO: BUG!!! OLD work has y_pred and y_true SWITCHED!!!!!
         #### compute loss only where true call is made. kl only at calltrue==1. don't penalize outside real calls
 
         # def loss_sparse_kl_closure( callTrue,baseint ):
@@ -127,52 +127,76 @@ class Model():
         #     return(sparse_kl)
         # #myloss = loss_sparse_kl_closure(inputsCallTrue,readdat)
 
-#         def my_sparse_categorical_crossentropy( y_true, y_pred ):
-#             """Compute sparse_categorical_crossentropy: y_pred = probDistribution, y_true=Integer
+        def myclosure( numonehot ):
+            def my_sparse_categorical_crossentropy( y_true, y_pred ):
+                """Compute sparse_categorical_crossentropy: y_pred = probDistribution, y_true=Integer
 
-#             Only where the read is covered: basedat!=0
-#             """
+                Only where the read is covered: basedat!=0
+                """
 
-#             y_trueInt=KK.backend.cast(y_true,'int32')
+                y_true= KK.backend.cast( y_true[:,:,0],'int32') # so must take the integer at [0] AND feed as [batch,col,1]!
 
-#             # print("*y_true.shape",y_true.shape)
-#             # print("*y_true.dtype",y_true.dtype)
-#             # print("*y_pred.shape",y_pred.shape)
-#             # print("*y_pred.dtype",y_pred.dtype)
-#             # *y_true.shape (?, ?, ?)
-#             # *y_true.dtype <dtype: 'int32'>
-#             # *y_pred.shape (?, 640, 133)
-#             # *y_pred.dtype <dtype: 'float32'>
-#             # Traceback (most recent call last):
+                print("*y_true.shape",y_true.shape)
+                print("*y_true.dtype",y_true.dtype)
+                print("*y_pred.shape",y_pred.shape)
+                print("*y_pred.dtype",y_pred.dtype)
+                # *y_true.shape (?, ?, ?)
+                # *y_true.dtype <dtype: 'int32'>
+                # *y_pred.shape (?, 640, 133)
+                # *y_pred.dtype <dtype: 'float32'>
+                # Traceback (most recent call last):
 
-#             eps = 1.0E-9 # 0.0 or too small causes NAN loss!
+                eps = 1.0E-9 # 0.0 or too small causes NAN loss!
 
-#             #NOPE
-#             #kl = -tf.math.log(y_pred+eps)[y_true]
+                #### pull the true -log loss at the correct index
+                #### nll = -tf.match.log(y_pred+eps)
+                #### for batch in range(y_true.shape[0]):
+                ####   for col in range(y_true.shape[1]):
+                ####     output[batch,col] = nll[batch,col, y_true[batch,col,0]]
 
-#             #NOPE
-#             # AttributeError: 'Tensor' object has no attribute 'ndim', 
-#             # AttributeError: module 'tensorflow.python.keras.api._v1.keras.backend' has no attribute 'take_along_axis' TODO: tf.gather_nd??? KK.gather on flattened
-#             #kl = KK.backend.take_along_axis( y_pred, y_true, axis=2) 
+                #NOPE
+                #kl = -tf.math.log(y_pred+eps)[y_true]
 
-#             onehot = KK.backend.one_hot(KK.backend.squeeze(y_trueInt,axis=-1),133) # onehot.shape (?, ?, 133)
-#             print("onehot.shape",onehot.shape)
-#             logloss = -tf.math.log(y_pred+eps) # logloss.shape (?, 640, 133)
-#             print("logloss.shape",logloss.shape)
-#             klall = KK.layers.Multiply()([logloss,onehot]) # TODO: why does tf.multiply(logloss,onehot) not work??
-#             kl = tf.reduce_sum(klall,axis=-1, keepdims=True) # sum up kl components, only 1 non-zero
+                #NOPE
+                # AttributeError: 'Tensor' object has no attribute 'ndim', 
+                # AttributeError: module 'tensorflow.python.keras.api._v1.keras.backend' has no attribute 'take_along_axis'
+                #kl = np.take_along_axis( y_pred, y_true, axis=2) 
 
-#             # only take loss where there is a true call and there is a base
-#             # this is a closure because it refers to readbaseint outside TODO: ???
-#             #sparsekl1 = tf.multiply(kl, inputsCallTrue) # callTrue is 1 when true call is made
-#             #sparsekl = tf.multiply(sparsekl1, KK.backend.cast( KK.backend.not_equal( readdat[:,:,0], 0.0 ), dtype=tf.float32) ) # only where readbaseint!=0
+                #NOPE
+                #kl = tf.gather_nd( -tf.math.log(y_pred+eps), y_true)
 
-#             print("*kl.shape",kl.shape)
-#             print("*inputsCallTrue.shape",inputsCallTrue.shape)
-# #            print("*sparsekl1.shape",sparsekl1.shape)
-# #            print("*sparsekl.shape",sparsekl.shape)
-# #            return(sparsekl)
-#             return(kl)
+                # NOPE: ValueError: Cannot convert an unknown Dimension to a Tensor: ? -> nb
+                # linear indexing
+                # (nb,nc,ni) = y_pred.shape
+                # xout = KK.backend.arange(nb)*(nc*ni)
+                # xin = KK.backend.arange(nc)*(ni)
+                # totake = KK.backend.add.outer(xout,xin)+y_true
+                # kl= KK.backend.take(rr,totake)
+
+                #EXPAND onehot
+                onehot = KK.backend.one_hot(y_true,numonehot) # onehot.shape (?, ?, 133)
+                print("onehot.shape",onehot.shape)
+                logloss = -tf.math.log(y_pred+eps) # logloss.shape (?, 640, 133)
+                print("logloss.shape",logloss.shape)
+                klall = tf.multiply(logloss,onehot)
+                kl = tf.reduce_sum(klall,axis=-1, keepdims=True) # sum up kl components, only 1 non-zero
+                print("*kl.shape",kl.shape)
+
+                # only take loss where there is a true call and there is a base
+                # this is a closure because it refers to readbaseint outside
+                #sparsekl1 = tf.multiply(kl, inputsCallTrue) # callTrue is 1 when true call is made
+                present = KK.backend.expand_dims(KK.backend.cast( KK.backend.not_equal( readdat[:,:,0], 0.0 ), dtype=tf.float32),axis= -1)
+                print("present.shape",present.shape)
+                sparsekl = tf.multiply(kl, present ) # only where readbaseint!=0
+                print("*sparsekl.shape",sparsekl.shape)
+
+                #print("*inputsCallTrue.shape",inputsCallTrue.shape)
+                #print("*sparsekl1.shape",sparsekl1.shape)
+
+                return( tf.reduce_mean(sparsekl))
+
+            return(my_sparse_categorical_crossentropy) # closure
+
 
         def zero_loss(y_true, y_pred):
             # print("zero_loss y_pred.shape", y_pred.shape)
@@ -180,10 +204,10 @@ class Model():
             #return(KK.backend.zeros_like(y_pred))
             return(KK.backend.zeros_like(y_true))
 
-        #### different losses:
-
         # "kullback_leibler_divergence"
         # loss_weights=[0.0,1.0,0.0,0.0])
         self.model.compile(optimizer=myopt, 
-                           loss=["sparse_categorical_crossentropy","sparse_categorical_crossentropy",zero_loss,zero_loss])
+                           loss=[myclosure(133), myclosure(2), zero_loss,zero_loss])
+                           #loss=[my_sparse_categorical_crossentropy,my_sparse_categorical_crossentropy,zero_loss,zero_loss])
+                           #loss=["sparse_categorical_crossentropy","sparse_categorical_crossentropy",zero_loss,zero_loss])
                            

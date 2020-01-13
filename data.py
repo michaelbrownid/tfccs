@@ -136,7 +136,7 @@ class data:
         if "windowoutputDirectHPPlusCallTrue" in self.outputdatName:
             calltruedat = np.expand_dims(self.dat["windowHPCallTrue"][mystart:myend,],axis= -1)
             outputs = [ 
-                        self.dat["windowoutputDirectHP"][mystart:myend,:],
+                        np.expand_dims(self.dat["windowoutputDirectHP"][mystart:myend,:],axis= -1),
                         calltruedat,
                         np.zeros_like(calltruedat) ] # hack, zeros for batchsize, zero_loss (keras doesn't have optional in/out!)
         elif "HP" in self.outputdatName:

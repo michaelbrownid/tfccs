@@ -59,9 +59,8 @@ def test(args):
 
             model.model = KK.models.load_model(args.modelsave, custom_objects={"KK":KK, 
                                                                                "zero_loss": nullloss,
-                                                                               "myloss": nullloss,
-                                                                               "sparse_kl": nullloss,
-                                                                               "args": args })
+                                                                               "my_sparse_categorical_crossentropy": nullloss })
+
             ################################
             for b in [ args.batch_number ]:
 
