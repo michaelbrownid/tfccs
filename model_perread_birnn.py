@@ -47,18 +47,21 @@ class Model():
         forwardYesBack0 = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=True, name="forwardYesBack0")(readdatConcat) 
 
         # 1st RNN layer
-        forwardNotBack1 = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=False, name="forwardNotBack1")(forwardNotBack0)
-        forwardYesBack1 = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=True, name="forwardYesBack1")(forwardYesBack0)
+        #forwardNotBack1 = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=False, name="forwardNotBack1")(forwardNotBack0)
+        #forwardYesBack1 = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=True, name="forwardYesBack1")(forwardYesBack0)
 
-        # 2nd RNN layer
-        forwardNotBack = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=False, name="forwardNotBack")(forwardNotBack1)
-        forwardYesBack = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=True, name="forwardYesBack")(forwardYesBack1)
+        # last RNN layer
+        forwardNotBack = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=False, name="forwardNotBack")(forwardNotBack0)
+        forwardYesBack = KK.layers.GRU( rnn_hidden_size, return_sequences=True, go_backwards=True, name="forwardYesBack")(forwardYesBack0)
 
         rnnconcat = KK.layers.Concatenate(axis= -1,name="rnnconcat")([forwardNotBack, forwardYesBack]) # [None, 640, 512]
 
         #### make predications on HP base, len, call
-        predHP = KK.layers.Dense(133, activation='softmax',name="predHP")(rnnconcat) #  [None, 640, 133] windowAlignment.py 0:132
-        predHPCall =  KK.layers.Dense(2, activation='softmax',name="predHPCall")(rnnconcat) # [None, 640, 2]
+        predHP0 = KK.layers.Dense(194, activation='softmax',name="predHP0")(rnnconcat) 
+        predHP  = KK.layers.Dense(133, activation='softmax',name="predHP")(predHP0) #  [None, 640, 133] windowAlignment.py 0:132
+        
+        predHPCall0=  KK.layers.Dense(128, activation='softmax',name="predHPCall0")(rnnconcat)
+        predHPCall =  KK.layers.Dense(2, activation='softmax',name="predHPCall")(predHPCall0) # [None, 640, 2]
 
         if False:
             #### make uniform loss everywhere there is no base covering
@@ -148,31 +151,6 @@ class Model():
 
                 eps = 1.0E-9 # 0.0 or too small causes NAN loss!
 
-                #### pull the true -log loss at the correct index
-                #### nll = -tf.match.log(y_pred+eps)
-                #### for batch in range(y_true.shape[0]):
-                ####   for col in range(y_true.shape[1]):
-                ####     output[batch,col] = nll[batch,col, y_true[batch,col,0]]
-
-                #NOPE
-                #kl = -tf.math.log(y_pred+eps)[y_true]
-
-                #NOPE
-                # AttributeError: 'Tensor' object has no attribute 'ndim', 
-                # AttributeError: module 'tensorflow.python.keras.api._v1.keras.backend' has no attribute 'take_along_axis'
-                #kl = np.take_along_axis( y_pred, y_true, axis=2) 
-
-                #NOPE
-                #kl = tf.gather_nd( -tf.math.log(y_pred+eps), y_true)
-
-                # NOPE: ValueError: Cannot convert an unknown Dimension to a Tensor: ? -> nb
-                # linear indexing
-                # (nb,nc,ni) = y_pred.shape
-                # xout = KK.backend.arange(nb)*(nc*ni)
-                # xin = KK.backend.arange(nc)*(ni)
-                # totake = KK.backend.add.outer(xout,xin)+y_true
-                # kl= KK.backend.take(rr,totake)
-
                 #EXPAND onehot
                 onehot = KK.backend.one_hot(y_true,numonehot) # onehot.shape (?, ?, 133)
                 print("onehot.shape",onehot.shape)
@@ -204,10 +182,8 @@ class Model():
             #return(KK.backend.zeros_like(y_pred))
             return(KK.backend.zeros_like(y_true))
 
-        # "kullback_leibler_divergence"
+        # "kullback_leibler_divergence" "sparse_categorical_crossentropy"
         # loss_weights=[0.0,1.0,0.0,0.0])
         self.model.compile(optimizer=myopt, 
                            loss=[myclosure(133), myclosure(2), zero_loss,zero_loss])
-                           #loss=[my_sparse_categorical_crossentropy,my_sparse_categorical_crossentropy,zero_loss,zero_loss])
-                           #loss=["sparse_categorical_crossentropy","sparse_categorical_crossentropy",zero_loss,zero_loss])
                            
