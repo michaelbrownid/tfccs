@@ -2,7 +2,6 @@ import tensorflow as tf
 import tensorflow.keras as KK
 import sys
 import numpy as np
-from . import struct
 
 class Model():
 
@@ -36,7 +35,7 @@ class Model():
         colcoverage = KK.layers.Lambda( lambda xx: KK.backend.expand_dims( KK.backend.sum( xx, axis=1) ), name="colcoverage")(colNotEmpty) # [None,640,1]
 
         #### concat all together [None, 640, 4+8+1+1+1] = [None, 640, 15]
-        readdatConcat = KK.layers.Concatenate(axis= -1,name="readdatConcat")([readdat, embedBase, readNumberTile, colcoverage, inputsCallProp]) # 
+        readdatConcat = KK.layers.Concatenate(axis= -1,name="readdatConcat")([readdat, embedBase, readNumberTile, colcoverage, inputsCallProp])
 
         #### forwardsense RNN (?, 640, rnn_hidden_size)
         rnn_hidden_size= 256
@@ -57,10 +56,10 @@ class Model():
         rnnconcat = KK.layers.Concatenate(axis= -1,name="rnnconcat")([forwardNotBack, forwardYesBack]) # [None, 640, 512]
 
         #### make predications on HP base, len, call
-        predHP0 = KK.layers.Dense(194, activation='softmax',name="predHP0")(rnnconcat) 
+        predHP0 = KK.layers.Dense(194, activation='elu',name="predHP0")(rnnconcat) 
         predHP  = KK.layers.Dense(133, activation='softmax',name="predHP")(predHP0) #  [None, 640, 133] windowAlignment.py 0:132
         
-        predHPCall0=  KK.layers.Dense(128, activation='softmax',name="predHPCall0")(rnnconcat)
+        predHPCall0=  KK.layers.Dense(128, activation='elu',name="predHPCall0")(rnnconcat)
         predHPCall =  KK.layers.Dense(2, activation='softmax',name="predHPCall")(predHPCall0) # [None, 640, 2]
 
         if False:
