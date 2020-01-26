@@ -1,17 +1,25 @@
 import sys
 
-for line in sys.stdin.read().splitlines():
+totalerrs = 0
+totalbases = 0
+
+for line in sys.stdin:
+  ff = line.split()
+  readid = ff[0]
+  refid = ff[2]
+  cigar = ff[5]
+
   oplen =[]
   op = []
   tmp  = []
 
-  for ii in range(len(line)):
-    if line[ii] in "=XDIS":
-        op.append(line[ii])
+  for ii in range(len(cigar)):
+    if cigar[ii] in "=XDIS":
+        op.append(cigar[ii])
         oplen.append(int("".join(tmp)))
         tmp=[]
     else:
-        tmp.append(line[ii])
+        tmp.append(cigar[ii])
 
   tlen = 0
   numdel = 0
@@ -29,5 +37,8 @@ for line in sys.stdin.read().splitlines():
 
   err = float(numdel+numins+nummm)/tlen
 
-  print("%f\t%d\t%d" % (err, (numdel+numins+nummm), tlen))
+  totalerrs += numdel+numins+nummm
+  totalbases += tlen
+  print("%s\t%s\t%f\t%d\t%d" % (readid, refid, err, (numdel+numins+nummm), tlen))
       
+print("# overallerror = %f = %d / %d" % ( float(totalerrs)/totalbases, totalerrs, totalbases))
