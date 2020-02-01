@@ -84,13 +84,14 @@ for obj in range(predcall.shape[0]):
     seq = []
     for col in range(predcall.shape[1]):
         # make call and add HP
+        #if obj==4: print("***",obj,col,predcall[obj,col,1])
         if predcall[obj,col,1]>0.5:
             # pull hp data vector over 133 possibilities
             dat = predhp[obj,col]
             predidx = np.argmax(dat)
             predprob = np.max(dat)
             (predbase,predlength) = idx2hp( predidx )
-            #if obj==112: print("***",predcall[obj,col,1],predidx, predprob,predbase,predlength)
+            #if obj==4: print("***",obj,col,predcall[obj,col,1],predidx, predprob,predbase,predlength)
             seq.append(predbase*predlength)
 
     # output fasta after going through all columns

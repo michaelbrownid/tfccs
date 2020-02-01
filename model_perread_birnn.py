@@ -1,7 +1,5 @@
 import tensorflow as tf
 import tensorflow.keras as KK
-import sys
-import numpy as np
 
 class Model():
 
@@ -118,15 +116,26 @@ class Model():
                 kl = tf.reduce_sum(klall,axis=-1, keepdims=True) # sum up kl components, only 1 non-zero
                 print("*kl.shape",kl.shape)
 
-                # only take loss where there is a true call and there is a base
-                # this is a closure because it refers to readbaseint outside
-                #####sparsekl1 = tf.multiply(kl, inputsCallTrue) # callTrue is 1 when true call is made
+                # only take loss where there is a base
+                # this is a closure because it refers to readbaseint outside. I hope!
                 present = KK.backend.expand_dims(KK.backend.cast( KK.backend.not_equal( readbaseint, 0.0 ), dtype=tf.float32),axis= -1)
                 print("*present.shape",present.shape)
                 sparsekl = tf.multiply(kl, present ) # only where readbaseint!=0
                 print("*sparsekl.shape",sparsekl.shape)
 
-                return( tf.reduce_mean(sparsekl))
+                # more penalty at truecall and col%5 != 0. Pick up on missed POA bases! missMask = 1.0 if index%5==0, otherwise 100.0 (POA error is about 1%)
+                # missRowMask = 100.0*KK.backend.ones( (sparsekl.shape[1],1) ) # 640, 1)
+                # missMask[::5] = 1.0
+                # misssparsekl = tf.multiply(sparsekl, misMask )
+                # print("*misssparsekl.shape",misssparsekl.shape)
+                # or just increase penalty of call at truecall. this will include the ones at col%5==0
+                if numonehot==2:
+                    print("*inputsCallTrue.shape",inputsCallTrue.shape)
+                    misssparsekl = tf.multiply(sparsekl, 100.0*inputsCallTrue+1.0) # callTrue is 1 when true call is made. 1 everywhere and 101 when callTrue
+                    print("*misssparsekl.shape",misssparsekl.shape)
+                    return( tf.reduce_mean(misssparsekl))
+                else:
+                    return( tf.reduce_mean(sparsekl))
 
             return(my_sparse_categorical_crossentropy) # closure
 
