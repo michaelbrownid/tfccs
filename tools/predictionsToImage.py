@@ -1,13 +1,12 @@
 """
 Take npz prediction dump and make an image of the model probabilities.
 
-python predictionsToImage.py \
-test.combine.perread.birnn.readnumber.1.npz \
-windownum 0 \
-begin 0 \
-end 128 \
-readnum 0 \
-predImage_0_0_128_0.png
+python3 -m tfccs.tools.predictionsToImage \
+output_model1ondata1 \
+windownum 33 \
+begin 240 \
+end 381 \
+
 """
 
 import sys
@@ -139,23 +138,26 @@ def predictionsToImage( datpredhp, dathpredcall,datinbaseint, pngfile ):
 
 if __name__ == "__main__":
   
-  npzfile    =sys.argv[1]      
+  npzprefix    =sys.argv[1]      
   windownum  =int(sys.argv[3]) 
   begin      =int(sys.argv[5]) 
   end        =int(sys.argv[7]) 
-  readnum    =int(sys.argv[9]) 
-  pngfile    =sys.argv[10]     
 
-  #### get the data the the window of interest
-  dat = np.load(npzfile)
+  ################################
+  # get the product. special because there are no subreads only the product over subread from makeCallProd133.py.
+  dat = np.load("%s.callprod.subreads.perread.birnn.npz" % npzprefix)
+  datpredhp = dat["predhp"][windownum][begin:end]
+  datpredcall = dat["predcall"][windownum][begin:end]
+  datinbaseint = dat["inBaseint"][windownum][begin:end]
+  predictionsToImage( datpredhp, datpredcall,datinbaseint, "%s_product.png" % npzprefix )
 
-  if readnum != -1:
+  ################################
+  # get all the subread images
+
+  dat = np.load("%s.subreads.perread.birnn.npz" % npzprefix)
+  for readnum in range(16):
     datpredhp = dat["predhp"][windownum][readnum][begin:end]
     datpredcall = dat["predcall"][windownum][readnum][begin:end]
     datinbaseint = dat["inBaseint"][windownum][readnum][begin:end]
-  else:
-    datpredhp = dat["predhp"][windownum][begin:end]
-    datpredcall = dat["predcall"][windownum][begin:end]
-    datinbaseint = dat["inBaseint"][windownum][begin:end]
+    predictionsToImage( datpredhp, datpredcall,datinbaseint, "%s_%d.png" % (npzprefix,readnum) )
 
-  predictionsToImage( datpredhp, datpredcall,datinbaseint, pngfile )
