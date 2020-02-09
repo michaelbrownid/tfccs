@@ -129,13 +129,27 @@ class Model():
                 # misssparsekl = tf.multiply(sparsekl, misMask )
                 # print("*misssparsekl.shape",misssparsekl.shape)
                 # or just increase penalty of call at truecall. this will include the ones at col%5==0
+
                 if numonehot==2:
+                    # normal loss
+                    return( tf.reduce_mean(sparsekl))
+
+                    # charge 101 at true call
                     print("*inputsCallTrue.shape",inputsCallTrue.shape)
                     misssparsekl = tf.multiply(sparsekl, 100.0*inputsCallTrue+1.0) # callTrue is 1 when true call is made. 1 everywhere and 101 when callTrue
                     print("*misssparsekl.shape",misssparsekl.shape)
                     return( tf.reduce_mean(misssparsekl))
                 else:
-                    return( tf.reduce_mean(sparsekl))
+                    # HP prediction
+
+                    # normal loss
+                    #return( tf.reduce_mean(sparsekl))
+
+                    # HP loss only where callTrue is 1
+                    print("*HP-inputsCallTrue.shape",inputsCallTrue.shape)
+                    misssparsekl = tf.multiply(sparsekl, inputsCallTrue) # callTrue is 1 when true call is made, otherwise 0.
+                    print("*HP-misssparsekl.shape",misssparsekl.shape)
+                    return( tf.reduce_mean(misssparsekl))
 
             return(my_sparse_categorical_crossentropy) # closure
 
