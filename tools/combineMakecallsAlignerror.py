@@ -15,10 +15,12 @@ import sys
 import subprocess
 import argparse
 
-def combineMakecallsAlignerror( outputprefix, datanpzfile, modelname, cudavisdev ):
+def combineMakecallsAlignerror( outputprefix, datanpzfile, modelclass, modelname, cudavisdev ):
 
     ################################
     # dump the data for the subreads. pull truth to be consistent
+
+    #subprocess.call("which python3 > whichpython3.txt", shell=True, executable="/bin/bash")
 
     #### truth
     cmd = """
@@ -27,13 +29,13 @@ def combineMakecallsAlignerror( outputprefix, datanpzfile, modelname, cudavisdev
     <(echo '%s') \
     EXEC:args.inputdatName=\\'windowinputPlusCallProp\\' \
     EXEC:args.outputdatName=\\'windowoutputDirectHPPlusCallTrue\\' \
-    EXEC:args.model=\\'model_perread_birnn\\' \
+    EXEC:args.model=\\'%s\\' \
     EXEC:args.modelsave=\\'%s\\' \
     EXEC:args.CUDA_VISIBLE_DEVICES=\\'%s\\' \
     EXEC:args.batch_size=1000 \
     EXEC:args.batch_number=-1 \
     EXEC:args.saveFile=\\'%s.truth.perread.birnn.npz\\'
-    """ % (datanpzfile, modelname, cudavisdev, outputprefix)
+    """ % (datanpzfile, modelclass, modelname, cudavisdev, outputprefix)
     print("cmd", cmd)
     subprocess.call(cmd, shell=True, executable="/bin/bash")
 
@@ -44,13 +46,13 @@ def combineMakecallsAlignerror( outputprefix, datanpzfile, modelname, cudavisdev
     <(echo '%s') \
     EXEC:args.inputdatName=\\'windowinputPlusCallProp\\' \
     EXEC:args.outputdatName=\\'windowoutputDirectHPPlusCallTrue\\' \
-    EXEC:args.model=\\'model_perread_birnn\\' \
+    EXEC:args.model=\\'%s\\' \
     EXEC:args.modelsave=\\'%s\\' \
     EXEC:args.CUDA_VISIBLE_DEVICES=\\'%s\\' \
     EXEC:args.batch_size=1000 \
     EXEC:args.batch_number=0 \
     EXEC:args.saveFile=\\'%s.subreads.perread.birnn.npz\\'
-    """ % ( datanpzfile, modelname, cudavisdev, outputprefix)
+    """ % ( datanpzfile, modelclass, modelname, cudavisdev, outputprefix)
     print("cmd", cmd)
     subprocess.call(cmd, shell=True, executable="/bin/bash")
 
@@ -95,8 +97,9 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--outputprefix',help="output prefix for outputfiles, outputmodel1")
     parser.add_argument('--datanpzfile',help="npz data file name of data vectors to operate on, data.001.npz")
-    parser.add_argument('--modelname',help="npz data file name of data vectors to operate on, model.perread.birnn_1.h5.best")
+    parser.add_argument('--modelname',help="name of the model used, model.perread.birnn_1.h5.best")
+    parser.add_argument('--modelclass',help="name of the model class to load, model_perread_birnn_more")
     parser.add_argument('--cudavisdev',help="gpu number to run on, 0")
     args=parser.parse_args()
 
-    combineMakecallsAlignerror( args.outputprefix, args.datanpzfile, args.modelname, args.cudavisdev )
+    combineMakecallsAlignerror( args.outputprefix, args.datanpzfile, args.modelclass, args.modelname, args.cudavisdev )
