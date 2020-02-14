@@ -56,8 +56,21 @@ def train(args):
             sess.run(tf.global_variables_initializer())
 
             if hasattr(args, "modelrestore"):
-                model.model = KK.models.load_model(args.modelrestore)
-                print("restored model", args.modelrestore)
+
+                # This doesn't work as
+                # my_sparse_categorical_crossentropy is implicit
+                # function and must be defined in training. TODO: I
+                # can move the loss funtion to explicitly defined with
+                # passed parameters
+
+                # model.model = KK.models.load_model(args.modelrestore, custom_objects={"KK":KK, 
+                #                                                                       "zero_loss": nullloss,
+                #                                                                       "my_sparse_categorical_crossentropy": nullloss })
+
+                # take already loaded model and just load the weights
+                print("about to model load_weights", args.modelrestore)
+                model.model.load_weights( args.modelrestore )
+                print("restored model load_weights", args.modelrestore)
 
             print("# args.num_epochs", args.num_epochs, "args.batch_size", args.batch_size, "num_batches", data_loader.num_batches)
 
