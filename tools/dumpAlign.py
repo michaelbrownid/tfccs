@@ -180,16 +180,16 @@ def outputReadStorage( mychr, ref, rs ):
 
 ################################
 def printHeader():
-    print "chr	refpos	truebase	truelen	leftctx	rightctx	zmw	hplen	numins	sumins	numdel	numsub	listins	listsub"
+    print("chr	refpos	truebase	truelen	leftctx	rightctx	zmw	hplen	numins	sumins	numdel	numsub	listins	listsub")
 
 ################################
 def main():
-    print >>sys.stderr, "RUNNING", datetime.datetime.now(), "\t".join(sys.argv)
+    print("RUNNING", datetime.datetime.now(), "\t".join(sys.argv),file=sys.stderr)
 
     DEBUG=False
 
     fullref = readref(sys.argv[1])
-    print >>sys.stderr, "len(fullrun)", len(fullref)
+    print("len(fullrun)", len(fullref),file=sys.stderr)
 
     chr = sys.argv[3]
     mybegin = int(sys.argv[4])
@@ -202,9 +202,9 @@ def main():
     readstorage={"refpos":-1, "hpbase":"N", "hplen":0}
 
     ref=fullref[mybegin:myend]
-    print >>sys.stderr, "hpify start"
+    print ("hpify start",file=sys.stderr)
     HPID = hpify(ref)
-    print >>sys.stderr, "hpify end"
+    print ("hpify end",file=sys.stderr)
     #print "ref", ref
     #print "HPID", HPID
 
@@ -214,20 +214,20 @@ def main():
 
     count = 0
     for col in samfile.pileup(chr, mybegin, myend, trucate=True): # truncate: only return inside
-        print >>sys.stderr, "count", count
+        print ("count", count,file=sys.stderr)
         count += 1
 
         if col.pos<mybegin or col.pos>=myend: continue
 
         # no qualities when pbmm2 two fastas
-        #col.set_min_base_quality(0) # !!!! THIS CAUSED HUGE PROBLEMS and simply skips bases below with default settings
+        col.set_min_base_quality(0) # !!!! THIS CAUSED HUGE PROBLEMS and simply skips bases below with default settings
 
-        if DEBUG: print ("\ncoverage at base %s = %s" % (col.pos, col.n))
+        if DEBUG: print("\ncoverage at base %s = %s" % (col.pos, col.n))
 
         #### Start of new HP?
         if (col.pos-mybegin) in HPID:
             if readstorage["refpos"]!= -1: # skips dummy first
-                print "\n".join( outputReadStorage( chr, fullref, readstorage ))
+                print("\n".join( outputReadStorage( chr, fullref, readstorage )))
             readstorage = {"refpos":col.pos, "hpbase":HPID[col.pos-mybegin][0], "hplen":HPID[col.pos-mybegin][1]}
 
         for read in col.pileups:
@@ -267,7 +267,7 @@ def main():
 
     samfile.close()
 
-    print >>sys.stderr, "!!!DONE!!!", datetime.datetime.now(), "\t".join(sys.argv)
+    print ("!!!DONE!!!", datetime.datetime.now(), "\t".join(sys.argv),file=sys.stderr)
 
 if __name__=="__main__":
     main()
