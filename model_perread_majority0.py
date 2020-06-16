@@ -14,7 +14,7 @@ class Model():
         #### take the baseint and embed
         # non-serializable: baseint = inputs[:,:,:,0] # the 0th out of 4 of base info
         baseint = KK.layers.Lambda( lambda xx: xx[:,:,:,0] )(inputs)
-        embed = KK.layers.Embedding(input_dim=1, output_dim=4, name="embed")(baseint)
+        embed = KK.layers.Embedding(input_dim=26+1, output_dim=4, name="embed")(baseint)
         print("embed.shape",embed.shape)
 
         #### merged is input plus the 4 embed for a total of 4+4 =8

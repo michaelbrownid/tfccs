@@ -24,7 +24,7 @@ class Model():
 
         #### take the baseint and embed.
         readbaseint = KK.layers.Lambda( lambda xx: xx[:,:,0], name="baseint" )(readdat) # [None, 640] # really a float but integer-only values
-        embedBase =   KK.layers.Embedding(input_dim=1, output_dim=8, name="embed")(readbaseint) # [None, 640, 8]
+        embedBase =   KK.layers.Embedding(input_dim=26+1, output_dim=8, name="embed")(readbaseint) # [None, 640, 8]
 
         #### single readNumber in so which read can influence model readNumber(None,1)->(None,640,1)
         readNumberExp = KK.layers.Lambda( lambda xx: KK.backend.expand_dims(xx, axis=1), name="readNumberExp")( readNumber ) # (None,1,1)

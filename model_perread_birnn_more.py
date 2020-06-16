@@ -24,7 +24,7 @@ class Model():
 
         #### take the baseint and embed.
         readbaseint = KK.layers.Lambda( lambda xx: xx[:,:,0], name="baseint" )(readdat) # [None, 640] # really a float but integer-only values
-        embedBase =   KK.layers.Embedding(input_dim=1, output_dim=8, name="embed")(readbaseint) # [None, 640, 8]
+        embedBase =   KK.layers.Embedding(input_dim=26+1, output_dim=8, name="embed")(readbaseint) # [None, 640, 8]
 
         #### single readNumber in so which read can influence model readNumber(None,1)->(None,640,1)
         readNumberExp = KK.layers.Lambda( lambda xx: KK.backend.expand_dims(xx, axis=1), name="readNumberExp")( readNumber ) # (None,1,1)
@@ -42,7 +42,7 @@ class Model():
         readdatConcat = KK.layers.Concatenate(axis= -1,name="readdatConcat")([readdat, embedBase, readNumberTileEmbed, colcoverageEmbed, inputsCallProp])
 
         #### forwardsense RNN (?, 640, rnn_hidden_size)
-        rnn_hidden_size= 320
+        rnn_hidden_size= 150
 
         #### The RNN layers
         # 0th RNN layer
@@ -60,12 +60,12 @@ class Model():
         rnnconcat = KK.layers.Concatenate(axis= -1,name="rnnconcat")([forwardNotBack, forwardYesBack]) # [None, 640, 512]
 
         #### make predications on HP base, len, call
-        predHP0 = KK.layers.Dense(194, activation='elu',name="predHP0")(rnnconcat) 
-        predHP1 = KK.layers.Dense(164, activation='elu',name="predHP1")(predHP0) 
+        predHP0 = KK.layers.Dense(150, activation='elu',name="predHP0")(rnnconcat) 
+        predHP1 = KK.layers.Dense(140, activation='elu',name="predHP1")(predHP0) 
         predHP  = KK.layers.Dense(133, activation='softmax',name="predHP")(predHP1) #  [None, 640, 133] windowAlignment.py 0:132
         
-        predHPCall0=  KK.layers.Dense(128, activation='elu',name="predHPCall0")(rnnconcat)
-        predHPCall1=  KK.layers.Dense(64, activation='elu',name="predHPCall1")(predHPCall0)
+        predHPCall0=  KK.layers.Dense(32, activation='elu',name="predHPCall0")(rnnconcat)
+        predHPCall1=  KK.layers.Dense(16, activation='elu',name="predHPCall1")(predHPCall0)
         predHPCall =  KK.layers.Dense(2, activation='softmax',name="predHPCall")(predHPCall1) # [None, 640, 2]
 
         ################################
